@@ -51,6 +51,17 @@ class RequestToastsTest {
     }
 
     @Test
+    @DisplayName("a duel toast is a request too, claimed from the auto-focus")
+    void reportsADuel() {
+        final var duel = new Notification("Bravo - Dofus Retro", "Zoro te défie.");
+
+        features.requestToasts().onNotification(duel);
+
+        assertThat(heard).containsExactly("Bravo <- DUEL from Zoro");
+        assertThat(features.requestToasts().claims(duel)).isTrue();
+    }
+
+    @Test
     @DisplayName("a game toast that asks nothing — an attack, a turn — is not a request")
     void ignoresOtherToasts() {
         final var attack = new Notification("Bravo - Dofus Retro", "Vous êtes attaqué !");

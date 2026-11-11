@@ -46,7 +46,7 @@ was a second `F1` ending the next fighter's turn. The banner names monsters too 
 one character — so a listener matches the name **exactly** (`WindowManager.windowOf`, never the substring
 `findWindow`) and a monster's turn finds no window.
 
-A **request** — a group invitation, a trade — is the same story per character: a box on the asked
+A **request** — a group invitation, a trade, a duel — is the same story per character: a box on the asked
 character's screen (`vision.RequestDialog`) and a toast, both worded the same (`domain.Request.in`), both
 reported to **`Requests`**, which the invitation relay, the trade accepter and the request auto-focus
 listen to. The box stays until answered and is re-read at every round, so a request is the same one as

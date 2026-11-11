@@ -33,12 +33,13 @@ toasts), and they listen there, so a turn seen both ways is acted on once — se
 `focusIfIdle`, and leaves the character already in front, a monster, or another player's character alone.
 A turn's fighter is matched by **exact** name (`WindowManager.windowOf`).
 
-Requests go the same way: `RequestToasts` reports the invitation and trade toasts to `core.Requests`
+Requests go the same way: `RequestToasts` reports the invitation, trade and duel toasts to `core.Requests`
 (the wording is `domain.Request.in`, shared with the box on screen), and claims them from the
 notification auto-focus. The **request auto-focus** (`RequestFocuser`) answers them, through the same
 `Summoner` as the turn auto-focus — and it has a `claims` seam of its own, a
 `BiPredicate<GameWindow, Request>`: it stands aside for the trades `ExchangeAccepter.claims` answers in
-place. The invitation relay (`group/`) listens to `Requests` too.
+place. The invitation relay (`group/`) listens to `Requests` too. A duel only the request auto-focus
+answers: it takes the player to the challenged character, and the answer is theirs.
 
 ## Auto-pass turns — the overlay's switch, a toggle key, and a banner
 

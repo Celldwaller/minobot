@@ -60,9 +60,17 @@ class RequestDialogTest {
     }
 
     @Test
-    @DisplayName("a box that asks something else — a duel — is no request")
+    @DisplayName("a duel is asked in the same box")
+    void readsADuel() {
+        final var reader = new FakeTextReader().reading("Alpha te défie.\nAcceptes-tu ?");
+
+        assertThat(new RequestDialog(reader).request(requestBox())).contains(new Request(Request.Kind.DUEL, "Alpha"));
+    }
+
+    @Test
+    @DisplayName("a box that asks something else is no request")
     void readsNothingOfAnotherQuestion() {
-        final var reader = new FakeTextReader().reading("Alpha te défie en duel. Acceptes-tu ?");
+        final var reader = new FakeTextReader().reading("Voulez-vous vraiment quitter ? Acceptes-tu ?");
 
         assertThat(new RequestDialog(reader).request(requestBox())).isEmpty();
     }

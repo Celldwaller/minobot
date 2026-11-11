@@ -11,7 +11,7 @@ import java.util.Optional;
 
 /**
  * Turns the game's request toasts — {@code Bravo t'invite à rejoindre son groupe.}, {@code Bravo te
- * propose de faire un échange.} — into requests reported to {@link Requests}, where the box read off the
+ * propose de faire un échange.}, {@code Bravo te défie.} — into requests reported to {@link Requests}, where the box read off the
  * screen reports too.
  *
  * <p>It answers nothing itself: the features that answer a request listen to {@link Requests}, so a
