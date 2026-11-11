@@ -1,9 +1,9 @@
 # The features that answer the game's calls
 
 The features that answer what the game calls out: a character attacked, invited, messaged, offered a
-trade, or with a turn to play. The game says it in a **Windows toast** — and, for turns and requests, on
-the **screen**, which keeps speaking for a window gone deaf to toasts (see `core/CLAUDE.md`). These
-features turn that call into an action. Each **speaks of characters** (`GameWindow`) and keeps the Windows detail —
+trade, or with a turn to play. Turns and requests are read off the **screen** only, which keeps speaking
+for a window gone deaf to toasts (see `core/CLAUDE.md`); the rest — an attack, a whisper — comes in a
+**Windows toast**. These features turn that call into an action. Each **speaks of characters** (`GameWindow`) and keeps the Windows detail —
 the French wording a message is matched by — in one named constant. Read `core/CLAUDE.md` (*The
 foreground is a single resource*) before touching any of them: they all react to the same stream and
 compete for the one screen.
@@ -12,8 +12,8 @@ compete for the one screen.
 
 The **notification auto-focus** (`NotificationListener`) answers *every* game toast by pulling the
 screen to the character it names. Some toasts, though, are answered elsewhere — a whisper becomes a card,
-a turn or a request is handed to `FightTurns` / `Requests` and answered there — and the auto-focus must
-not also jump to them. So each of those features exposes a **pure `claims(Notification)`**, and the auto-focus is built
+a turn or a request is answered from the screen, its toast only claimed — and the auto-focus must not
+also jump to them. So each of those features exposes a **pure `claims(Notification)`**, and the auto-focus is built
 with the **OR** of them (combined in `MinobotApp`): both sides decide the same, from the same toast,
 with no handshake and no race. A new feature that answers a toast silently adds its `claims` to that OR
 and nothing else.
@@ -24,18 +24,18 @@ the relay's keystrokes), and that test lives in another package.
 
 ## Turns and requests — heard from `FightTurns` and `Requests`, not from a toast
 
-The two turn features do **not** register with `NotificationManager`. A turn is reported to
-`core.FightTurns` by `TurnToasts` (the game's toast, `C'est à "Bravo" de jouer` — the wording kept there)
-and by `core.vision.ScreenWatcher` (the banner on the screen, which still speaks for a window gone deaf to
-toasts), and they listen there, so a turn seen both ways is acted on once — see `core/CLAUDE.md`.
-`TurnToasts.claims` joins the auto-focus's OR: the turn toast is the **turn auto-focus**'s
-(`TurnFocuser`) to answer, which takes the player to the character whose turn it is with the same yielding
-`focusIfIdle`, and leaves the character already in front, a monster, or another player's character alone.
-A turn's fighter is matched by **exact** name (`WindowManager.windowOf`).
+The turn and request features do **not** register with `NotificationManager`. A turn is reported to
+`core.FightTurns` by `core.vision.ScreenWatcher` alone — the banner on the screen, read several times and
+from several windows, which is why it goes through a hub that makes it one turn (see `core/CLAUDE.md`).
+The game's turn toast (`C'est à "Bravo" de jouer`) is **heard by no one**: `TurnToasts` is nothing but a
+pure static `claims`, kept with that wording, in the auto-focus's OR so the toast does not pull the
+screen a second time. The **turn auto-focus** (`TurnFocuser`) takes the player to the character whose turn
+it is with the same yielding `focusIfIdle`, and leaves the character already in front, a monster, or
+another player's character alone. A turn's fighter is matched by **exact** name (`WindowManager.windowOf`).
 
-Requests go the same way: `RequestToasts` reports the invitation, trade and duel toasts to `core.Requests`
-(the wording is `domain.Request.in`, shared with the box on screen), and claims them from the
-notification auto-focus. The **request auto-focus** (`RequestFocuser`) answers them, through the same
+Requests go the same way: the box on screen (`vision.RequestDialog`) is reported to `core.Requests`, and
+`RequestToasts.claims` (the wording is `domain.Request.in`, shared with the box) keeps the invitation,
+trade and duel toasts from the notification auto-focus. The **request auto-focus** (`RequestFocuser`) answers them, through the same
 `Summoner` as the turn auto-focus — and it has a `claims` seam of its own, a
 `BiPredicate<GameWindow, Request>`: it stands aside for the trades `ExchangeAccepter.claims` answers in
 place. The invitation relay (`group/`) listens to `Requests` too. A duel only the request auto-focus
@@ -91,9 +91,9 @@ does both jobs well.
 ## Auto-accept trades — no hotkey, the overlay's switch
 
 Accepts a trade one of the player's own characters asks of another. When A opens an exchange with B,
-it is **B** that the game asks — a box on B's screen and a toast, `Alpha te propose de faire un échange`
-— and the question **names the asker**. It hears of it from `core.Requests`, so the box and the toast
-make one request and one ENTER. That name is the whole discriminator: the trade is *internal* when it is
+it is **B** that the game asks — a box on B's screen, `Alpha te propose de faire un échange` — and the
+question **names the asker**. It hears of it from `core.Requests`, so the box read look after look makes
+one request and one ENTER. That name is the whole discriminator: the trade is *internal* when it is
 the name of one of the player's own windows (the receiver excepted), and it accepts it for them; a
 stranger's is left exactly as it was.
 
@@ -153,6 +153,6 @@ not stolen.
 
 It **stands aside**, though, for a toast answered elsewhere: a `Predicate<Notification>` it is built with
 tells it which toasts to leave alone — a whisper already a card at the edge, a turn or a request, which
-the turn and request auto-focus answer from the screen as well. The predicate is the **OR** of the
+the turn and request auto-focus answer from the screen. The predicate is the **OR** of the
 whisper toaster's, the turn toasts' and the request toasts' `claims`, combined in `MinobotApp`; every
 other toast — an attack — it still takes.

@@ -49,7 +49,7 @@ fr.minobot
 captures included), `win32.TextReader` (the OCR), `core.Input` (the keyboard and mouse), and the `ui`
 views we draw — `OverlayView` (the panel), `ToastView` (the whisper stack), `BannerView` (the auto-pass
 banner). Everything else is code that runs in a test, on any OS, with no game running — which is why
-there are 309 tests.
+there are 321 tests.
 
 **Keep it that way.** Do not call `user32.dll`, `combase.dll`, `java.awt.Robot` or Swing from anywhere
 but their implementations: a feature that reaches past `WindowApi` becomes untestable.

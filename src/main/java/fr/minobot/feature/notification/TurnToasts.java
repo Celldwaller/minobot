@@ -1,21 +1,19 @@
 package fr.minobot.feature.notification;
 
 import fr.minobot.core.FightTurns;
-import fr.minobot.core.NotificationManager;
 import fr.minobot.core.WindowManager;
-import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Notification;
 
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Turns the game's turn toast — {@code C'est à "Bravo" de jouer} — into a turn reported to
- * {@link FightTurns}, where the turn banner read off the screen reports too.
+ * Recognises the game's turn toast — {@code C'est à "Bravo" de jouer} — so the notification auto-focus
+ * leaves it alone.
  *
- * <p>It answers nothing itself: the features that act on a turn listen to {@link FightTurns}, so a turn
- * seen both as a toast and as a banner is acted on once. That is also why it {@linkplain #claims claims}
- * the toast: the auto-focus must not jump to the character a second time on it.
+ * <p>The toast reports nothing: a turn is read off the screen and heard from {@link FightTurns}, because
+ * the toast goes deaf on a window the multi-click has posted to and the banner does not. But the toast is
+ * still raised, and the turn auto-focus already answers its turn — a jump on the toast would be a second.
  */
 public final class TurnToasts {
 
@@ -25,25 +23,13 @@ public final class TurnToasts {
      */
     private static final List<String> TURN_KEYWORDS = List.of("jouer");
 
-    private final FightTurns turns;
-
-    public TurnToasts(NotificationManager notifications, FightTurns turns) {
-        this.turns = turns;
-
-        notifications.register(this::onNotification);
-    }
-
-    /** Runs on a virtual thread, one per notification, from {@link NotificationManager}. */
-    void onNotification(Notification notification) {
-        if (claims(notification)) {
-            turns.report(GameWindow.nameIn(notification.title()));
-        }
+    private TurnToasts() {
     }
 
     /** Whether a toast is the game announcing a turn — pure, so the auto-focus can consult it. */
-    public boolean claims(Notification notification) {
+    public static boolean claims(Notification notification) {
         final var title = notification.title();
-        if (title == null || title.isBlank() || !WindowManager.isGameTitle(title)) {
+        if (title == null || title.isBlank() || !WindowManager.isGameTitle(title) || notification.message() == null) {
             return false;
         }
         final var text = notification.message().toLowerCase(Locale.ROOT);

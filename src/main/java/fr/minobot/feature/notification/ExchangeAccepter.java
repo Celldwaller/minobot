@@ -22,12 +22,12 @@ import java.util.concurrent.locks.ReentrantLock;
  * <em>Auto-accept trades</em> switch drives.
  *
  * <p>When character A opens an exchange with character B, it is <em>B</em> that the game asks — in a box
- * on B's screen and in a toast, {@code Alpha te propose de faire un échange} — and the question
+ * on B's screen, {@code Alpha te propose de faire un échange} — and the question
  * <strong>names the one who asked</strong>. That name is the whole trick: the exchange is
  * <em>internal</em> when it is the name of one of the player's own windows. If it is a stranger's, the
  * request is left exactly as it was — the request auto-focus takes the player to the receiving window and
  * does nothing else, which is what a real trade offer should do. It hears of the request from
- * {@link Requests}, which makes one request of the box and the toast.
+ * {@link Requests}, which makes one request of a box read look after look.
  *
  * <p><strong>The player did not ask to change windows, so this tries not to.</strong> But sending a
  * keystroke to a window means the window must hold the keyboard, and the reliable way to give it the

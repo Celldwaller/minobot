@@ -59,8 +59,8 @@ public final class MinobotApp {
     private final FlashSuppressor flashSuppressor;
 
     /**
-     * Empty when Windows has no OCR language for this user: the turns and the requests are then the
-     * toasts' alone.
+     * Empty when Windows has no OCR language for this user: the turns and the requests are then heard
+     * of by nobody.
      */
     private final Optional<WindowsOcr> ocr;
     private final Optional<ScreenWatcher> screenWatcher;
@@ -108,20 +108,18 @@ public final class MinobotApp {
         this.notificationManager = new NotificationManager();
         this.flashSuppressor = new FlashSuppressor(api);
 
-        // Every turn of a fight and every request made of a character, heard of once: from the game's
-        // toast, and from the screen — which still speaks for a window gone deaf to toasts.
+        // Every turn of a fight and every request made of a character, heard of once and from the screen
+        // alone: the game's toast goes deaf on a window the multi-click has posted to, the screen does not.
         final var fightTurns = new FightTurns();
         final var requests = new Requests();
-        final var turnToasts = new TurnToasts(notificationManager, fightTurns);
-        final var requestToasts = new RequestToasts(windowManager, notificationManager, requests);
         this.ocr = WindowsOcr.start();
         if (ocr.isEmpty()) {
-            log.warn("No Windows OCR language for this user: turns and requests are heard from the toasts alone.");
+            log.warn("No Windows OCR language for this user: turns and requests will not be heard.");
         }
         this.screenWatcher = ocr.map(reader -> new ScreenWatcher(api, windowManager, List.of(
                 ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns),
                 ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests)),
-                fightTurns::inFight));
+                fightTurns::inFight, requests::awaited));
 
         this.multiClicker = new MultiWindowClicker(
                 api, windowManager, focusManager, flashSuppressor, settings, activityLog);
@@ -147,14 +145,13 @@ public final class MinobotApp {
         // for a toast answered elsewhere — a whisper, a turn, a request — and takes the player
         // everywhere else. The predicate is the OR of those features' claims.
         new NotificationListener(windowManager, focusManager, notificationManager, activityLog,
-                notification -> whisperToaster.claims(notification) || turnToasts.claims(notification)
-                        || requestToasts.claims(notification));
+                notification -> whisperToaster.claims(notification) || TurnToasts.claims(notification)
+                        || RequestToasts.claims(notification));
 
         // Takes the player to the character something is asked of, unless it is answered in place.
         new RequestFocuser(windowManager, focusManager, requests, activityLog, exchangeAccepter::claims);
 
-        // Takes the player to the character whose turn it is — the turn toast's auto-focus, now heard
-        // from the fight's turns so that a deaf window is called too.
+        // Takes the player to the character whose turn it is, read off the banner on the screen.
         new TurnFocuser(windowManager, focusManager, fightTurns, activityLog);
 
         // Ends each character's turn while the Auto-pass switch is on, reading it at every turn. The

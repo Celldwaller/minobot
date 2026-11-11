@@ -12,8 +12,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The turn-passer: which turns it ends, and which are none of its business. Which toasts are turns is
- * {@link TurnToastsTest}'s.
+ * The turn-passer: which turns it ends, and which are none of its business.
  *
  * <p>Focusing a background window makes the real {@link fr.minobot.core.FocusManager} sleep through its
  * ALT dance, so the timeout is generous — the same shape as the invitation relay's tests.

@@ -2,6 +2,7 @@ package fr.minobot.core.vision;
 
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
+import fr.minobot.win32.Win32;
 import fr.minobot.win32.Win32Exception;
 import fr.minobot.win32.WindowApi;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 
 /**
  * Looks at the characters' windows, one per {@link #POLL} — one per {@link #FIGHT_POLL} during a fight —
@@ -44,6 +46,7 @@ public final class ScreenWatcher {
     private final WindowManager windows;
     private final List<ScreenReader> readers;
     private final BooleanSupplier fighting;
+    private final LongSupplier awaited;
 
     private final AtomicReference<Thread> thread = new AtomicReference<>();
 
@@ -57,13 +60,23 @@ public final class ScreenWatcher {
         this(api, windows, readers, () -> false);
     }
 
-    /** @param fighting whether a fight goes on, asked before every look */
     public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers,
                          BooleanSupplier fighting) {
+        this(api, windows, readers, fighting, () -> Win32.NULL_HANDLE);
+    }
+
+    /**
+     * @param fighting whether a fight goes on, asked before every look
+     * @param awaited  the window a request is awaited on ({@link Win32#NULL_HANDLE} for none), asked
+     *                 before every look
+     */
+    public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers,
+                         BooleanSupplier fighting, LongSupplier awaited) {
         this.api = api;
         this.windows = windows;
         this.readers = List.copyOf(readers);
         this.fighting = fighting;
+        this.awaited = awaited;
     }
 
     /**
@@ -106,7 +119,7 @@ public final class ScreenWatcher {
     }
 
     Duration pace() {
-        return fighting.getAsBoolean() ? FIGHT_POLL : POLL;
+        return fighting.getAsBoolean() || awaited.getAsLong() != Win32.NULL_HANDLE ? FIGHT_POLL : POLL;
     }
 
     /** A look that fails is the next look's to retry — except a bug, which would fail at every look. */
@@ -121,21 +134,39 @@ public final class ScreenWatcher {
         }
     }
 
-    /** One look: the next character's window in the round, read by every reader. */
+    /**
+     * One look: the next character's window in the round, read by every reader. The round follows the
+     * player's character order, the cycler's: the turns of a fight come in roughly that order, so the next
+     * window looked at tends to be the one whose banner comes next.
+     *
+     * <p>A window a request is awaited on is looked at instead, every look, and the round waits: the
+     * relay is held up until its box is seen, and nothing else on screen is.
+     */
     void look() {
-        windows.ensureFresh();
-        final var characters = windows.windows().stream().filter(GameWindow::hasCharacterName).toList();
+        final var characters = windows.orderedWindows().stream().filter(GameWindow::hasCharacterName).toList();
+        final var expected = awaited.getAsLong();
+        final var awaitedWindow = characters.stream().filter(window -> window.hwnd() == expected).findFirst();
+        if (awaitedWindow.isPresent() && lookAt(awaitedWindow.get())) {
+            return;
+        }
         for (var tried = 0; tried < characters.size(); tried++) {
-            final var window = characters.get(Math.floorMod(next++, characters.size()));
-            final var start = System.nanoTime();
-            final var capture = api.capture(window.hwnd());
-            if (capture.isPresent()) {
-                final var captured = System.nanoTime();
-                readers.forEach(reader -> reader.read(window, capture.get(), start));
-                times.add(captured - start, System.nanoTime() - captured);
+            if (lookAt(characters.get(Math.floorMod(next++, characters.size())))) {
                 return;
             }
         }
+    }
+
+    /** Whether the window could be captured, and so was read. */
+    private boolean lookAt(GameWindow window) {
+        final var start = System.nanoTime();
+        final var capture = api.capture(window.hwnd());
+        if (capture.isEmpty()) {
+            return false;
+        }
+        final var captured = System.nanoTime();
+        readers.forEach(reader -> reader.read(window, capture.get(), start));
+        times.add(captured - start, System.nanoTime() - captured);
+        return true;
     }
 
     /**

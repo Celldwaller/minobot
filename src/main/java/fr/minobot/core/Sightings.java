@@ -9,7 +9,7 @@ import java.util.function.LongSupplier;
  * Tells a new thing on screen from the same thing seen again.
  *
  * <p>What the game shows is seen many times — a banner over the second it stands, a box until it is
- * answered — and once more through its toast. Per subject (the fight, a character's window), a sighting
+ * answered. Per subject (the fight, a character's window), a sighting
  * is the same as the last one while it shows the same thing and the sightings keep coming within
  * {@code window} of each other; anything else is new.
  */

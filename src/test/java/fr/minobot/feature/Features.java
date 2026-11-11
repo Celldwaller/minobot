@@ -15,10 +15,8 @@ import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.ExchangeAccepter;
 import fr.minobot.feature.notification.NotificationListener;
 import fr.minobot.feature.notification.RequestFocuser;
-import fr.minobot.feature.notification.RequestToasts;
 import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
-import fr.minobot.feature.notification.TurnToasts;
 import fr.minobot.feature.notification.WhisperToaster;
 import fr.minobot.feature.window.MultiWindowClicker;
 import fr.minobot.feature.window.WindowCycler;
@@ -136,7 +134,7 @@ public final class Features {
         return focus;
     }
 
-    /** Where every turn source reports, and every turn feature listens. */
+    /** Where the screen reports every turn, and every turn feature listens. */
     public FightTurns turns() {
         return turns;
     }
@@ -149,15 +147,11 @@ public final class Features {
         return new TurnFocuser(windows, focus, turns, activity);
     }
 
-    public TurnToasts turnToasts() {
-        return new TurnToasts(notifications, turns);
-    }
-
     public ExchangeAccepter exchangeAccepter() {
         return new ExchangeAccepter(api, windows, input, focus, requests, settings, activity);
     }
 
-    /** Where every request source reports, and every request feature listens. */
+    /** Where the screen reports every request, and every request feature listens. */
     public Requests requests() {
         return requests;
     }
@@ -169,10 +163,6 @@ public final class Features {
 
     public RequestFocuser requestFocuser() {
         return new RequestFocuser(windows, focus, requests, activity, (_, _) -> false);
-    }
-
-    public RequestToasts requestToasts() {
-        return new RequestToasts(windows, notifications, requests);
     }
 
     /** A character's window on this desktop, as the features know it. */
