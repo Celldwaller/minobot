@@ -21,10 +21,21 @@ and nothing else.
 invitation relay in `group/` is tested directly against it (a toast must not steal the foreground from
 the relay's keystrokes), and that test lives in another package.
 
+## Turns — heard from `FightTurns`, not from a toast
+
+The two turn features do **not** register with `NotificationManager`. A turn is reported to
+`core.FightTurns` by `TurnToasts` (the game's toast, `C'est à "Bravo" de jouer` — the wording kept there)
+and by `core.vision.TurnWatcher` (the banner on the screen, which still speaks for a window gone deaf to
+toasts), and they listen there, so a turn seen both ways is acted on once — see `core/CLAUDE.md`.
+`TurnToasts.claims` joins the auto-focus's OR: the turn toast is the **turn auto-focus**'s
+(`TurnFocuser`) to answer, which takes the player to the character whose turn it is with the same yielding
+`focusIfIdle`, and leaves the character already in front, a monster, or another player's character alone.
+A turn's fighter is matched by **exact** name (`WindowManager.windowOf`).
+
 ## Auto-pass turns — the overlay's switch, a toggle key, and a banner
 
-Plays a table of alts on its own. In a fight the game raises a toast for whoever's turn it is —
-`C'est à "Bravo" de jouer` — and when the switch is on, `TurnPasser` turns that toast into a keypress:
+Plays a table of alts on its own. In a fight, whoever's turn it is gets reported to `FightTurns` (above),
+and when the switch is on, `TurnPasser` turns that turn into a keypress:
 it brings the character up and presses the game's end-turn key (`F1`, a constant — the key is the
 game's, not the player's). A background character's turn ends without the player lifting a finger.
 
@@ -33,11 +44,11 @@ have stepped away, not that they are playing one of the seats — so there is no
 That is why it is **off by default**, and why the switch is drawn to be unmistakable.
 
 Like the invitation relay it focuses a window and then types into it, so it holds the foreground for the
-length of that (`focus.takeOver()`): the notification auto-focus answers the same toast, and without the
+length of that (`focus.takeOver()`): the turn auto-focus hears of the same turn, and without the
 takeover its focus would land between the focus and the keypress and end a turn in the wrong window. A
 `ReentrantLock` serializes one pass against the next for the same reason. It is a **combat** feature and
 the group invitation is done **before** the fight — the two are not meant to share the screen, and do
-not. The switch is read live at every toast; unlike the order and the
+not. The switch is read live at every turn; unlike the order and the
 keybinds its **state** is **session-only** — not persisted, so a restart forgets it and finds it off,
 which is the safe default for a feature that ends turns on its own.
 
@@ -105,7 +116,7 @@ the title), by whom, and what they said. The card lives five seconds (`TOAST_LIF
 takes it down early, and a **click** on it focuses the receiver so the player can answer (on a virtual
 thread — `FocusManager` sleeps). Several whispers **stack**, newest at the bottom.
 
-It is the mirror of `ExchangeAccepter` and `TurnPasser`: a feature that registers with
+It is the mirror of `ExchangeAccepter`: a feature that registers with
 `NotificationManager`, speaks of characters, and exposes a **pure `claims(Notification)`** the auto-focus
 consults. Its one novelty is a **UI surface**, cut on the overlay's interface/impl seam so all the
 deciding stays testable with no screen: `ui/ToastContent` (the immutable snapshot), `ui/ToastActions`
@@ -136,5 +147,6 @@ not stolen.
 It **stands aside**, though, for a toast another feature answers in place — see *Auto-accept trades* and
 *Whisper toast*: a `Predicate<Notification>` it is built with tells it which toasts to leave alone, so it
 never jumps to a character whose exchange is being accepted silently, nor to one whose whisper is already
-a card at the edge. The predicate is the **OR** of the trade-accepter's and the whisper toaster's
-`claims`, combined in `MinobotApp`; every other toast, an attack or an invitation, it still takes.
+a card at the edge. The predicate is the **OR** of the trade-accepter's, the whisper toaster's and the
+turn toasts' `claims`, combined in `MinobotApp`; every other toast, an attack or an invitation, it still
+takes.

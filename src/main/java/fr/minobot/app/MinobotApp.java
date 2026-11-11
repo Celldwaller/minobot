@@ -3,11 +3,15 @@ package fr.minobot.app;
 import fr.minobot.core.*;
 import fr.minobot.core.KeyboardMonitor.Binding;
 import fr.minobot.core.input.InputSimulator;
+import fr.minobot.core.vision.TurnBanner;
+import fr.minobot.core.vision.TurnWatcher;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.AutoPassBanner;
 import fr.minobot.feature.notification.ExchangeAccepter;
 import fr.minobot.feature.notification.NotificationListener;
+import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
+import fr.minobot.feature.notification.TurnToasts;
 import fr.minobot.feature.notification.WhisperToaster;
 import fr.minobot.feature.overlay.OverlayController;
 import fr.minobot.feature.window.MultiWindowClicker;
@@ -18,10 +22,12 @@ import fr.minobot.ui.overlay.SwingOverlay;
 import fr.minobot.ui.toast.SwingToastStack;
 import fr.minobot.win32.User32;
 import fr.minobot.win32.WindowApi;
+import fr.minobot.win32.WindowsOcr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -45,6 +51,10 @@ public final class MinobotApp {
     private final FocusManager focusManager;
     private final NotificationManager notificationManager;
     private final FlashSuppressor flashSuppressor;
+
+    /** Empty when Windows has no OCR language for this user: the turns are then the toasts' alone. */
+    private final Optional<WindowsOcr> ocr;
+    private final Optional<TurnWatcher> turnWatcher;
 
     /**
      * What every feature writes to and the panel reads back — the two records of what happened while the
@@ -89,6 +99,17 @@ public final class MinobotApp {
         this.notificationManager = new NotificationManager();
         this.flashSuppressor = new FlashSuppressor(api);
 
+        // Every turn of a fight, heard of once: from the game's turn toast, and from the banner that
+        // opens the turn on the screen — which still speaks for a window gone deaf to toasts.
+        final var fightTurns = new FightTurns();
+        final var turnToasts = new TurnToasts(notificationManager, fightTurns);
+        this.ocr = WindowsOcr.start();
+        if (ocr.isEmpty()) {
+            log.warn("No Windows OCR language for this user: fight turns are heard from the toasts alone.");
+        }
+        this.turnWatcher = ocr.map(reader ->
+                new TurnWatcher(api, windowManager, new TurnBanner(reader), fightTurns));
+
         this.multiClicker = new MultiWindowClicker(
                 api, windowManager, focusManager, flashSuppressor, settings, activityLog);
         this.windowCycler = new WindowCycler(api, windowManager, focusManager, activityLog);
@@ -110,15 +131,19 @@ public final class MinobotApp {
                 notificationManager, whisperLog, SwingToastStack::new);
 
         // Registers itself with the notification manager; it has no hotkey of its own. It stands aside
-        // for a toast answered silently elsewhere — an internal trade, a whisper — and takes the player
-        // everywhere else. The predicate is the OR of those features' claims.
+        // for a toast answered silently elsewhere — an internal trade, a whisper, a turn — and takes the
+        // player everywhere else. The predicate is the OR of those features' claims.
         new NotificationListener(windowManager, focusManager, notificationManager, activityLog,
-                notification -> exchangeAccepter.claims(notification) || whisperToaster.claims(notification));
+                notification -> exchangeAccepter.claims(notification) || whisperToaster.claims(notification)
+                        || turnToasts.claims(notification));
 
-        // Ends each character's turn while the Auto-pass switch is on, reading it at every toast. The
+        // Takes the player to the character whose turn it is — the turn toast's auto-focus, now heard
+        // from the fight's turns so that a deaf window is called too.
+        new TurnFocuser(windowManager, focusManager, fightTurns, activityLog);
+
+        // Ends each character's turn while the Auto-pass switch is on, reading it at every turn. The
         // switch is flipped by the overlay or by the AUTO_PASS_TURN hotkey (bound below like any other).
-        new TurnPasser(windowManager, inputSimulator, focusManager, notificationManager, settings,
-                activityLog);
+        new TurnPasser(windowManager, inputSimulator, focusManager, fightTurns, settings, activityLog);
 
         // The visible half of the same switch: a standing banner over the game while auto-pass is on. It
         // answers no toast — it watches the switch through Settings.onChange and follows the game window.
@@ -203,6 +228,7 @@ public final class MinobotApp {
         flashSuppressor.suppress();
 
         notificationManager.start();
+        turnWatcher.ifPresent(TurnWatcher::start);
         keyboardMonitor.start();
 
         log.info("=== Application services ready ===");
@@ -219,6 +245,8 @@ public final class MinobotApp {
         log.info("=== Minobot stopping ===");
         keyboardMonitor.stop();
         notificationManager.stop();
+        turnWatcher.ifPresent(TurnWatcher::stop);
+        ocr.ifPresent(WindowsOcr::close);
         flashSuppressor.restore();
         systemTray.stop();
 

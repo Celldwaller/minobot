@@ -39,6 +39,17 @@ public final class Win32 {
     public static final int SPI_GETFOREGROUNDFLASHCOUNT = 0x2004;
     public static final int SPI_SETFOREGROUNDFLASHCOUNT = 0x2005;
 
+    /**
+     * PrintWindow: paint the client area only, and paint it <em>fully</em> — without the second flag a
+     * window drawn through the GPU (a browser engine, a game) hands back a black rectangle.
+     */
+    public static final int PW_CLIENTONLY = 0x1;
+    public static final int PW_RENDERFULLCONTENT = 0x2;
+
+    // CreateDIBSection: an uncompressed bitmap whose colours are given as RGB values
+    public static final int BI_RGB = 0;
+    public static final int DIB_RGB_COLORS = 0;
+
     /** MonitorFromWindow: return the monitor that the window overlaps the most. */
     public static final int MONITOR_DEFAULTTONEAREST = 0x00000002;
 

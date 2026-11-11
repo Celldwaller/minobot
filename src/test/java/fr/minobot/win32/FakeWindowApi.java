@@ -29,7 +29,9 @@ public final class FakeWindowApi implements WindowApi {
     private final Map<Long, String> executables = Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<Long, Rect> bounds = Collections.synchronizedMap(new LinkedHashMap<>());
 
-    private final Set<Long> minimized = ConcurrentHashMap.newKeySet();
+    private final Map<Long, Capture> captures = new ConcurrentHashMap<>();
+
+    private final Set<Long> minimized =ConcurrentHashMap.newKeySet();
     private final Set<Long> maximized = ConcurrentHashMap.newKeySet();
     private final Set<Long> hidden = ConcurrentHashMap.newKeySet();
     private final Map<Long, Long> monitors = new LinkedHashMap<>();
@@ -281,6 +283,24 @@ public final class FakeWindowApi implements WindowApi {
                 window.top() + TITLE_BAR,
                 window.right() - BORDER,
                 window.bottom() - BORDER));
+    }
+
+    /**
+     * What the window shows, as a test painted it. A window with none, a minimized one or a closed one
+     * captures to nothing, as on the real desktop.
+     */
+    @Override
+    public Optional<Capture> capture(long hwnd) {
+        if (!isWindow(hwnd) || isIconic(hwnd)) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(captures.get(hwnd));
+    }
+
+    /** Paints what the next {@link #capture} of the window will see — and every one after it. */
+    public FakeWindowApi showing(long hwnd, Capture capture) {
+        captures.put(hwnd, capture);
+        return this;
     }
 
     /** Puts a window somewhere precise — on another monitor, say. Bounds, frame included. */

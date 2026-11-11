@@ -18,8 +18,9 @@ you work in the subtree it governs — none of them is loaded just because you o
   window cycler (`x2` / `shift+x2`), the taskbar reorder (`F9`).
 - **`group/`** — the party: the group-invitation relay (`F8`).
 - **`overlay/`** — the control panel drawn over the game (`shift+space`), and its `OverlayController`.
-- **`notification/`** — the features that live on the game's Windows toasts: the notification
-  auto-focus, auto-pass turns, auto-accept trades, and the whisper toast. They coordinate through a
+- **`notification/`** — the features that live on the game's Windows toasts and on the fight's turns:
+  the notification auto-focus, the turn auto-focus, auto-pass turns, auto-accept trades, and the whisper
+  toast. They coordinate through a
   `claims(Notification)` seam, so read that package before touching any one of them.
 
 ## Testing

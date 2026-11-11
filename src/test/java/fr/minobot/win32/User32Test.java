@@ -149,6 +149,27 @@ class User32Test {
     }
 
     @Test
+    @DisplayName("PrintWindow paints a window into a DIB section the size of its client area")
+    void capturesAWindow() {
+        final var hwnd = anyVisibleWindow();
+        assumeTrue(hwnd != Win32.NULL_HANDLE, "no visible titled window on this desktop");
+        final var area = api.clientArea(hwnd);
+        assumeTrue(area.isPresent(), "the window vanished mid-test");
+
+        final var capture = api.capture(hwnd);
+        assumeTrue(capture.isPresent(), "Windows refused to capture " + api.windowText(hwnd));
+
+        // A mis-laid-out BITMAPINFO would come back the wrong size, or crash in CreateDIBSection.
+        assertThat(capture.get().width()).isEqualTo(area.get().width());
+        assertThat(capture.get().height()).isEqualTo(area.get().height());
+    }
+
+    @Test
+    void capturesNothingOfADeadHandle() {
+        assertThat(api.capture(Win32.NULL_HANDLE)).isEmpty();
+    }
+
+    @Test
     @DisplayName("WindowFromPoint takes its POINT by value — 8 bytes in a register on Win64")
     void findsTheWindowUnderTheCursor() {
         final var cursor = api.cursorPosition();

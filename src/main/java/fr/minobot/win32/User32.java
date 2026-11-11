@@ -29,6 +29,9 @@ public final class User32 implements WindowApi {
     /** Opening a process and reading its image path live here, not in {@code user32.dll}. */
     private static final SymbolLookup KERNEL32 = SymbolLookup.libraryLookup("kernel32.dll", Arena.global());
 
+    /** The memory device context and bitmap a window is captured into live here. */
+    private static final SymbolLookup GDI32 = SymbolLookup.libraryLookup("gdi32.dll", Arena.global());
+
     /** {@code POINT { LONG x; LONG y; }} — 8 bytes, so the Win64 ABI passes it by value in a register. */
     private static final MemoryLayout POINT = MemoryLayout.structLayout(
             ValueLayout.JAVA_INT.withName("x"),
@@ -59,6 +62,27 @@ public final class User32 implements WindowApi {
      * nothing behind that a logout does not undo.
      */
     private static final int NO_PERSIST = 0;
+
+    /**
+     * {@code BITMAPINFO}: a 40-byte {@code BITMAPINFOHEADER} followed by one {@code RGBQUAD}, which a
+     * 32-bit uncompressed bitmap leaves unused but which the structure still carries.
+     */
+    private static final MemoryLayout BITMAPINFO = MemoryLayout.structLayout(
+            ValueLayout.JAVA_INT.withName("biSize"),
+            ValueLayout.JAVA_INT.withName("biWidth"),
+            ValueLayout.JAVA_INT.withName("biHeight"),
+            ValueLayout.JAVA_SHORT.withName("biPlanes"),
+            ValueLayout.JAVA_SHORT.withName("biBitCount"),
+            ValueLayout.JAVA_INT.withName("biCompression"),
+            ValueLayout.JAVA_INT.withName("biSizeImage"),
+            ValueLayout.JAVA_INT.withName("biXPelsPerMeter"),
+            ValueLayout.JAVA_INT.withName("biYPelsPerMeter"),
+            ValueLayout.JAVA_INT.withName("biClrUsed"),
+            ValueLayout.JAVA_INT.withName("biClrImportant"),
+            ValueLayout.JAVA_INT.withName("bmiColors"));
+
+    /** What {@code biSize} must say: the header alone, colour table excluded. */
+    private static final int BITMAPINFOHEADER_SIZE = 40;
 
     /** {@code WNDENUMPROC: BOOL CALLBACK(HWND, LPARAM)} */
     private static final FunctionDescriptor ENUM_PROC = FunctionDescriptor.of(
@@ -103,7 +127,10 @@ public final class User32 implements WindowApi {
             FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
     private static final MethodHandle FlashWindowEx = downcall("FlashWindowEx",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-    private static final MethodHandle GetWindowThreadProcessId = downcall("GetWindowThreadProcessId",
+    private static final MethodHandle PrintWindow = downcall("PrintWindow",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_INT));
+    private static final MethodHandle GetWindowThreadProcessId =downcall("GetWindowThreadProcessId",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     /** {@code HANDLE OpenProcess(DWORD access, BOOL inherit, DWORD pid)} — the HANDLE is a 64-bit value. */
@@ -116,6 +143,21 @@ public final class User32 implements WindowApi {
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     private static final MethodHandle CloseHandle = kernel32("CloseHandle",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
+
+    private static final MethodHandle CreateCompatibleDC = gdi32("CreateCompatibleDC",
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+    /** {@code HBITMAP CreateDIBSection(HDC, const BITMAPINFO*, UINT usage, void** bits, HANDLE, DWORD)} */
+    private static final MethodHandle CreateDIBSection = gdi32("CreateDIBSection",
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+    private static final MethodHandle SelectObject = gdi32("SelectObject",
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+    private static final MethodHandle DeleteObject = gdi32("DeleteObject",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
+    private static final MethodHandle DeleteDC = gdi32("DeleteDC",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
+    private static final MethodHandle GdiFlush = gdi32("GdiFlush",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT));
 
     /**
      * {@code BOOL SystemParametersInfoW(UINT uiAction, UINT uiParam, PVOID pvParam, UINT fWinIni)}.
@@ -149,6 +191,12 @@ public final class User32 implements WindowApi {
     private static MethodHandle kernel32(String name, FunctionDescriptor descriptor) {
         final var symbol = KERNEL32.find(name)
                 .orElseThrow(() -> new IllegalStateException("kernel32.dll exports no " + name));
+        return LINKER.downcallHandle(symbol, descriptor);
+    }
+
+    private static MethodHandle gdi32(String name, FunctionDescriptor descriptor) {
+        final var symbol = GDI32.find(name)
+                .orElseThrow(() -> new IllegalStateException("gdi32.dll exports no " + name));
         return LINKER.downcallHandle(symbol, descriptor);
     }
 
@@ -388,6 +436,85 @@ public final class User32 implements WindowApi {
         } catch (Throwable t) {
             throw failure("GetClientRect", t);
         }
+    }
+
+    // ------------------------------------------------------------------ capture
+
+    /**
+     * Has the window paint its client area into a bitmap of our own, then reads the pixels back.
+     *
+     * <p>The bitmap is a DIB section — memory we can read directly — laid out top-down (a negative
+     * height) at 32 bits per pixel, so row 0 is the top of the window and each pixel is one
+     * little-endian {@code int}: {@code 0xAARRGGBB}, whose alpha byte {@code PrintWindow} leaves
+     * undefined, hence masked off.
+     *
+     * <p>Three GDI resources are in play — the memory DC, our bitmap, and the bitmap the DC came with,
+     * which must be selected back before ours is deleted — and every path out releases them.
+     */
+    @Override
+    public Optional<Capture> capture(long hwnd) {
+        if (isIconic(hwnd)) {
+            return Optional.empty();
+        }
+        final var area = clientArea(hwnd).filter(rect -> rect.width() > 0 && rect.height() > 0);
+        if (area.isEmpty()) {
+            return Optional.empty();
+        }
+        final var width = area.get().width();
+        final var height = area.get().height();
+
+        try (final var arena = Arena.ofConfined()) {
+            final var memoryDc = (long) CreateCompatibleDC.invokeExact(Win32.NULL_HANDLE);
+            if (memoryDc == Win32.NULL_HANDLE) {
+                return Optional.empty();
+            }
+            try {
+                final var info = arena.allocate(BITMAPINFO);
+                info.set(ValueLayout.JAVA_INT, 0, BITMAPINFOHEADER_SIZE);
+                info.set(ValueLayout.JAVA_INT, 4, width);
+                info.set(ValueLayout.JAVA_INT, 8, -height);        // top-down
+                info.set(ValueLayout.JAVA_SHORT, 12, (short) 1);  // biPlanes
+                info.set(ValueLayout.JAVA_SHORT, 14, (short) 32); // biBitCount
+                info.set(ValueLayout.JAVA_INT, 16, Win32.BI_RGB);
+
+                final var bitsPointer = arena.allocate(ValueLayout.ADDRESS);
+                final var bitmap = (long) CreateDIBSection.invokeExact(
+                        memoryDc, info, Win32.DIB_RGB_COLORS, bitsPointer, Win32.NULL_HANDLE, 0);
+                if (bitmap == Win32.NULL_HANDLE) {
+                    return Optional.empty();
+                }
+                try {
+                    final var original = (long) SelectObject.invokeExact(memoryDc, bitmap);
+                    try {
+                        final var painted = (int) PrintWindow.invokeExact(
+                                hwnd, memoryDc, Win32.PW_CLIENTONLY | Win32.PW_RENDERFULLCONTENT);
+                        if (painted == 0) {
+                            return Optional.empty();
+                        }
+                        // GDI may batch its drawing: the bits are only ours to read once it has flushed.
+                        final var ignored = (int) GdiFlush.invokeExact();
+                        final var bits = bitsPointer.get(ValueLayout.ADDRESS, 0)
+                                .reinterpret((long) width * height * 4);
+                        return Optional.of(new Capture(width, height, opaque(bits.toArray(ValueLayout.JAVA_INT))));
+                    } finally {
+                        final var ignored = (long) SelectObject.invokeExact(memoryDc, original);
+                    }
+                } finally {
+                    final var ignored = (int) DeleteObject.invokeExact(bitmap);
+                }
+            } finally {
+                final var ignored = (int) DeleteDC.invokeExact(memoryDc);
+            }
+        } catch (Throwable t) {
+            throw failure("PrintWindow", t);
+        }
+    }
+
+    private static int[] opaque(int[] argb) {
+        for (var i = 0; i < argb.length; i++) {
+            argb[i] &= 0xFFFFFF;
+        }
+        return argb;
     }
 
     @Override

@@ -224,6 +224,21 @@ public final class WindowManager {
         return Optional.empty();
     }
 
+    /**
+     * A character's window by their exact name, and nothing else.
+     *
+     * <p>For a name read off a fight, which may be anyone's: a monster's or another player's character's
+     * is no window of ours, and the substring match of {@link #findWindow} would hand the monster
+     * {@code Tofu} the window of the character {@code Tofulette}.
+     */
+    public Optional<GameWindow> windowOf(String characterName) {
+        ensureFresh();
+        return windows().stream()
+                .filter(GameWindow::hasCharacterName)
+                .filter(window -> window.name().equalsIgnoreCase(characterName))
+                .findFirst();
+    }
+
     public List<GameWindow> orderedWindows() {
         return orderedWindows(false);
     }
