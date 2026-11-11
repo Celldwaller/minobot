@@ -3,12 +3,17 @@ package fr.minobot.app;
 import fr.minobot.core.*;
 import fr.minobot.core.KeyboardMonitor.Binding;
 import fr.minobot.core.input.InputSimulator;
+import fr.minobot.core.vision.RememberingTextReader;
+import fr.minobot.core.vision.RequestDialog;
+import fr.minobot.core.vision.ScreenReader;
+import fr.minobot.core.vision.ScreenWatcher;
 import fr.minobot.core.vision.TurnBanner;
-import fr.minobot.core.vision.TurnWatcher;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.AutoPassBanner;
 import fr.minobot.feature.notification.ExchangeAccepter;
 import fr.minobot.feature.notification.NotificationListener;
+import fr.minobot.feature.notification.RequestFocuser;
+import fr.minobot.feature.notification.RequestToasts;
 import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
 import fr.minobot.feature.notification.TurnToasts;
@@ -27,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -52,9 +58,12 @@ public final class MinobotApp {
     private final NotificationManager notificationManager;
     private final FlashSuppressor flashSuppressor;
 
-    /** Empty when Windows has no OCR language for this user: the turns are then the toasts' alone. */
+    /**
+     * Empty when Windows has no OCR language for this user: the turns and the requests are then the
+     * toasts' alone.
+     */
     private final Optional<WindowsOcr> ocr;
-    private final Optional<TurnWatcher> turnWatcher;
+    private final Optional<ScreenWatcher> screenWatcher;
 
     /**
      * What every feature writes to and the panel reads back — the two records of what happened while the
@@ -99,30 +108,33 @@ public final class MinobotApp {
         this.notificationManager = new NotificationManager();
         this.flashSuppressor = new FlashSuppressor(api);
 
-        // Every turn of a fight, heard of once: from the game's turn toast, and from the banner that
-        // opens the turn on the screen — which still speaks for a window gone deaf to toasts.
+        // Every turn of a fight and every request made of a character, heard of once: from the game's
+        // toast, and from the screen — which still speaks for a window gone deaf to toasts.
         final var fightTurns = new FightTurns();
+        final var requests = new Requests();
         final var turnToasts = new TurnToasts(notificationManager, fightTurns);
+        final var requestToasts = new RequestToasts(windowManager, notificationManager, requests);
         this.ocr = WindowsOcr.start();
         if (ocr.isEmpty()) {
-            log.warn("No Windows OCR language for this user: fight turns are heard from the toasts alone.");
+            log.warn("No Windows OCR language for this user: turns and requests are heard from the toasts alone.");
         }
-        this.turnWatcher = ocr.map(reader ->
-                new TurnWatcher(api, windowManager, new TurnBanner(reader), fightTurns));
+        this.screenWatcher = ocr.map(reader -> new ScreenWatcher(api, windowManager, List.of(
+                ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns),
+                ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests))));
 
         this.multiClicker = new MultiWindowClicker(
                 api, windowManager, focusManager, flashSuppressor, settings, activityLog);
         this.windowCycler = new WindowCycler(api, windowManager, focusManager, activityLog);
         this.windowReorder = new WindowReorder(api, windowManager, focusManager, activityLog);
         this.groupManager = new GroupManager(
-                windowManager, inputSimulator, focusManager, notificationManager, activityLog);
+                windowManager, inputSimulator, focusManager, requests, activityLog);
         this.overlay = new OverlayController(api, windowManager, settings, keyboardMonitor, focusManager,
                 activityLog, whisperLog, SwingOverlay::new);
 
         // Answers a trade between two of the player's own characters in place. Built before the
-        // auto-focus so the auto-focus can consult it and stand aside for the toasts it takes.
+        // request auto-focus so it can consult it and stand aside for the trades it takes.
         final var exchangeAccepter = new ExchangeAccepter(api, windowManager, inputSimulator,
-                focusManager, notificationManager, settings, activityLog);
+                focusManager, requests, settings, activityLog);
 
         // Shows a whisper as a quiet toast at the left of the game rather than pulling the screen to it,
         // and writes it to the whisper log so the panel can still list it once the card has faded. Also
@@ -131,11 +143,14 @@ public final class MinobotApp {
                 notificationManager, whisperLog, SwingToastStack::new);
 
         // Registers itself with the notification manager; it has no hotkey of its own. It stands aside
-        // for a toast answered silently elsewhere — an internal trade, a whisper, a turn — and takes the
-        // player everywhere else. The predicate is the OR of those features' claims.
+        // for a toast answered elsewhere — a whisper, a turn, a request — and takes the player
+        // everywhere else. The predicate is the OR of those features' claims.
         new NotificationListener(windowManager, focusManager, notificationManager, activityLog,
-                notification -> exchangeAccepter.claims(notification) || whisperToaster.claims(notification)
-                        || turnToasts.claims(notification));
+                notification -> whisperToaster.claims(notification) || turnToasts.claims(notification)
+                        || requestToasts.claims(notification));
+
+        // Takes the player to the character something is asked of, unless it is answered in place.
+        new RequestFocuser(windowManager, focusManager, requests, activityLog, exchangeAccepter::claims);
 
         // Takes the player to the character whose turn it is — the turn toast's auto-focus, now heard
         // from the fight's turns so that a deaf window is called too.
@@ -228,7 +243,7 @@ public final class MinobotApp {
         flashSuppressor.suppress();
 
         notificationManager.start();
-        turnWatcher.ifPresent(TurnWatcher::start);
+        screenWatcher.ifPresent(ScreenWatcher::start);
         keyboardMonitor.start();
 
         log.info("=== Application services ready ===");
@@ -245,7 +260,7 @@ public final class MinobotApp {
         log.info("=== Minobot stopping ===");
         keyboardMonitor.stop();
         notificationManager.stop();
-        turnWatcher.ifPresent(TurnWatcher::stop);
+        screenWatcher.ifPresent(ScreenWatcher::stop);
         ocr.ifPresent(WindowsOcr::close);
         flashSuppressor.restore();
         systemTray.stop();

@@ -1,9 +1,9 @@
 package fr.minobot.feature.group;
 
 import fr.minobot.core.domain.Notification;
+import fr.minobot.core.domain.Request;
 import fr.minobot.core.input.FakeInput;
 import fr.minobot.feature.Features;
-import fr.minobot.feature.notification.NotificationListener;
 import fr.minobot.win32.FakeWindowApi;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,11 +17,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 /**
- * The invitation relay, and the toast that paces it.
+ * The invitation relay, and the invitation that paces it.
  *
- * <p>{@code inviteAll} blocks on each step until the game's toast arrives, so the tests run it on its
- * own thread and hand it the toasts — which is exactly what the notification manager does in
- * production, on a virtual thread of its own.
+ * <p>{@code inviteAll} blocks on each step until the invited character is asked, so the tests run it on
+ * its own thread and report the invitations — which is what the screen watcher and the toasts do in
+ * production, from threads of their own.
  */
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 class GroupManagerTest {
@@ -34,8 +34,9 @@ class GroupManagerTest {
                 .withWindow(3, "Delta - Dofus");
     }
 
-    private static Notification invitationFor(String character) {
-        return new Notification(character + " - Dofus Retro", "Vous avez recu une invitation de groupe");
+    /** What the game shows the invited character — here always from Alpha: the relay reads only who is asked. */
+    private static void invite(Features features, String character) {
+        features.requests().report(features.window(character), new Request(Request.Kind.GROUP_INVITE, "Alpha"));
     }
 
     @Test
@@ -49,10 +50,10 @@ class GroupManagerTest {
         final var sequence = Thread.ofVirtual().start(groupManager::inviteAll);
 
         awaitPaste(input, "/invite Bravo");
-        groupManager.onNotification(invitationFor("Bravo"));
+        invite(features, "Bravo");
 
         awaitPaste(input, "/invite Delta");
-        groupManager.onNotification(invitationFor("Delta"));
+        invite(features, "Delta");
 
         sequence.join();
 
@@ -74,9 +75,9 @@ class GroupManagerTest {
         final var sequence = Thread.ofVirtual().start(groupManager::inviteAll);
 
         awaitPaste(input, "/invite Bravo");
-        groupManager.onNotification(invitationFor("Bravo"));
+        invite(features, "Bravo");
         awaitPaste(input, "/invite Delta");
-        groupManager.onNotification(invitationFor("Delta"));
+        invite(features, "Delta");
         sequence.join();
 
         // Alpha's command in Alpha's window, Bravo's in Bravo's: a command typed anywhere else is a
@@ -85,13 +86,14 @@ class GroupManagerTest {
     }
 
     @Test
-    @DisplayName("no toast takes the foreground from a relay in progress")
+    @DisplayName("no toast and no invitation takes the foreground from a relay in progress")
     void keepsTheForegroundAgainstTheNotificationListener() throws InterruptedException {
         final var api = desktop().withWindow(4, "Echo - Dofus");
         final var features = new Features(api, Map.of());
         final var input = features.input();
         final var groupManager = features.groupManager();
         final var listener = features.notificationListener();
+        features.requestFocuser(); // hears every invitation the relay does, and must stand aside
 
         final var sequence = Thread.ofVirtual().start(groupManager::inviteAll);
         awaitPaste(input, "/invite Bravo");
@@ -101,12 +103,12 @@ class GroupManagerTest {
         listener.onNotification(new Notification("Echo - Dofus Retro", "Vous etes attaque !"));
         assertThat(api.foregroundWindow()).isEqualTo(1);
 
-        // The invitation toasts reach both features, the way the notification manager dispatches them.
-        dispatch(invitationFor("Bravo"), groupManager, listener);
+        // Each invitation reaches the relay and the request auto-focus both, as Requests tells them.
+        invite(features, "Bravo");
         awaitPaste(input, "/invite Delta");
-        dispatch(invitationFor("Delta"), groupManager, listener);
+        invite(features, "Delta");
         awaitPaste(input, "/invite Echo");
-        dispatch(invitationFor("Echo"), groupManager, listener);
+        invite(features, "Echo");
 
         sequence.join();
 
@@ -118,8 +120,8 @@ class GroupManagerTest {
     }
 
     @Test
-    @DisplayName("a toast that is not an invitation does not advance the sequence")
-    void waitsForTheInvitationToast() throws InterruptedException {
+    @DisplayName("a request that is not an invitation does not advance the sequence")
+    void waitsForTheInvitation() throws InterruptedException {
         final var api = desktop();
         final var features = new Features(api, Map.of());
         final var input = features.input();
@@ -128,16 +130,16 @@ class GroupManagerTest {
         final var sequence = Thread.ofVirtual().start(groupManager::inviteAll);
         awaitPaste(input, "/invite Bravo");
 
-        // Right character, but Bravo was attacked, not invited.
-        groupManager.onNotification(new Notification("Bravo - Dofus Retro", "Vous etes attaque !"));
+        // Right character, but Bravo was offered a trade, not invited.
+        features.requests().report(features.window("Bravo"), new Request(Request.Kind.TRADE, "Alpha"));
         Thread.sleep(300);
 
         // Still waiting on the inviter: had this released the step, Bravo would hold the focus.
         assertThat(api.focusedWindows()).containsExactly(1L);
 
-        groupManager.onNotification(invitationFor("Bravo"));
+        invite(features, "Bravo");
         awaitPaste(input, "/invite Delta");
-        groupManager.onNotification(invitationFor("Delta"));
+        invite(features, "Delta");
         sequence.join();
 
         assertThat(api.focusedWindows()).containsExactly(1L, 2L, 3L, 1L);
@@ -154,7 +156,7 @@ class GroupManagerTest {
         final var sequence = Thread.ofVirtual().start(groupManager::inviteAll);
         awaitPaste(input, "/invite Bravo");
 
-        // No toast: the command may never have reached the game. Accepting an invitation that is not
+        // No invitation seen: the command may never have reached the game. Accepting an invitation that is not
         // on screen presses ENTER into the game itself, so the relay stops rather than guess.
         sequence.join();
 
@@ -198,13 +200,6 @@ class GroupManagerTest {
 
         assertThat(features.input().actions()).isEmpty();
         assertThat(api.focusedWindows()).isEmpty();
-    }
-
-    /** What the notification manager does with a toast: hands it to every feature, on its own thread. */
-    private static void dispatch(Notification toast, GroupManager groupManager,
-                                 NotificationListener listener) {
-        Thread.ofVirtual().start(() -> groupManager.onNotification(toast));
-        Thread.ofVirtual().start(() -> listener.onNotification(toast));
     }
 
     /** Waits for the sequence to reach the step that pastes this command. */

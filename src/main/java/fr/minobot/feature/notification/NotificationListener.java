@@ -21,11 +21,10 @@ import java.util.function.Predicate;
  * <p>It is a move that <em>yields</em>: it never takes the screen from under a player who is in the
  * middle of something, and never from under one of the scripted sequences.
  *
- * <p>And it <em>stands aside</em> for a toast another feature answers silently. The trade-accepter,
- * when one of the player's own characters asks another for an exchange, accepts it in place without
- * moving the screen — a move this listener would otherwise undo by jumping to the receiver. The
- * predicate is how it knows to leave those alone; every other toast, an outsider's trade included, it
- * still takes the player to.
+ * <p>And it <em>stands aside</em> for a toast another feature answers. A whisper becomes a card at the
+ * edge of the game; a turn or a request is answered by the turn and request auto-focus, which hear of
+ * it from the screen too, and a second jump here would be one too many. The predicate is how it knows to
+ * leave those alone; every other toast, an attack, it still takes the player to.
  */
 public final class NotificationListener {
 

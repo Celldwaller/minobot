@@ -24,14 +24,17 @@ fr.minobot
 ├── win32/          WindowApi (the interface), User32 (the FFM implementation), Win32, Point, Capture
 │                   (a window's pixels); TextReader (OCR) and WindowsOcr (Windows.Media.Ocr over FFM).
 ├── core/           The Windows mechanics: WindowManager, FocusManager, KeyboardMonitor,
-│                   NotificationManager, FightTurns (each fight turn, heard once), FlashSuppressor,
+│                   NotificationManager, FightTurns and Requests (each fight turn, each request made
+│                   of a character — invitation, trade — heard once), FlashSuppressor,
 │                   SystemTrayManager, Input / InputSimulator, and the two records the panel reads
 │                   back: ActivityLog, WhisperLog.
 │   ├── vision/     Reading the game off a capture: GameStage (where the 742x556 stage sits in a
 │                   window), TurnBanner (the name on the banner that opens every fight turn),
-│                   TurnWatcher (reads it at 4 Hz and reports the turn to FightTurns).
+│                   RequestDialog (the invitation or trade box), ScreenWatcher (captures one window
+│                   every 250 ms, round the characters, and hands it to every ScreenReader).
 │   └── domain/     GameWindow (a character's window, and their name), Character (the player's part of
 │                   a character: name, class, sex), DofusClass, Sex, Notification (a toast),
+│                   Request (an invitation or a trade asked of a character, and its wording),
 │                   Activity (one thing Minobot did), Whisper (one message received).
 ├── ui/             OverlayView (the panel), OverlayContent, OverlayActions. Interfaces only.
 └── feature/        The user-facing features, split by functional domain:
@@ -46,7 +49,7 @@ fr.minobot
 captures included), `win32.TextReader` (the OCR), `core.Input` (the keyboard and mouse), and the `ui`
 views we draw — `OverlayView` (the panel), `ToastView` (the whisper stack), `BannerView` (the auto-pass
 banner). Everything else is code that runs in a test, on any OS, with no game running — which is why
-there are 268 tests.
+there are 309 tests.
 
 **Keep it that way.** Do not call `user32.dll`, `combase.dll`, `java.awt.Robot` or Swing from anywhere
 but their implementations: a feature that reaches past `WindowApi` becomes untestable.

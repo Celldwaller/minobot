@@ -8,6 +8,7 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import fr.minobot.core.domain.Request;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -65,6 +66,17 @@ class WindowsOcrTest {
                 .hasValueSatisfying(text -> assertThat(text.strip()).isEqualTo(name));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"Alpha t'invite à rejoindre son groupe.", "Alpha te propose de faire un échange."})
+    @DisplayName("a request box's question, two lines on its beige, reads back as the request it asks")
+    void readsARequest(String question) {
+        assumeTrue(ocr != null, "no OCR language installed for this user");
+
+        assertThat(ocr.read(asked(question).padded(20, STRIP_BEIGE)).flatMap(Request::in))
+                .isEqualTo(Request.in(question))
+                .isPresent();
+    }
+
     @Test
     @DisplayName("an image with no text in it reads as blank, not as a failure")
     void readsNothingInABlankImage() {
@@ -90,6 +102,22 @@ class WindowsOcrTest {
         try (final var in = WindowsOcrTest.class.getResourceAsStream("/vision/" + fixture)) {
             return capture(ImageIO.read(in));
         }
+    }
+
+    /** A question in the request box's ink, as it is cut out of a 2560x1369 window (817x123). */
+    private static Capture asked(String question) {
+        final var image = new BufferedImage(817, 123, BufferedImage.TYPE_INT_RGB);
+        final var graphics = image.createGraphics();
+        graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        graphics.setColor(new Color(STRIP_BEIGE));
+        graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
+        graphics.setColor(new Color(0x514A3C));
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 28));
+        final var metrics = graphics.getFontMetrics();
+        graphics.drawString(question, (image.getWidth() - metrics.stringWidth(question)) / 2, 50);
+        graphics.drawString("Acceptes-tu ?", (image.getWidth() - metrics.stringWidth("Acceptes-tu ?")) / 2, 86);
+        graphics.dispose();
+        return capture(image);
     }
 
     /** A name in dark bold on a strip the size of the real one (407x35 on a 2560x1369 window). */

@@ -4,8 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -23,7 +25,8 @@ import java.util.function.LongSupplier;
  *
  * <p>The same fighter reported again is the same turn, unless another fighter was reported in between or
  * it has been quiet for {@link #SAME_TURN}. The fighter is anyone the banner names — a monster too: a
- * monster's turn between two of a character's is what tells them apart.
+ * monster's turn between two of a character's is what tells them apart. A fighter reported again within
+ * {@link #LINGER} of their last sighting, after another's, is a banner left over and not a turn.
  */
 public final class FightTurns {
 
@@ -36,12 +39,23 @@ public final class FightTurns {
      */
     static final Duration SAME_TURN = Duration.ofSeconds(2);
 
+    /**
+     * How long the last fighter's banner may still be read after the next one's. Every window draws the
+     * banner on its own, and the watcher reads them in turn: right after the next fighter's banner in one
+     * window, another window can still show the last one's — read as a new turn, that was a second
+     * {@code F1} ending the next fighter's turn (seen with eight characters on auto-pass, up to a second
+     * late). A real turn comes back no sooner than every other fighter has played, so the only turn this
+     * can swallow is one of a fight of two, both passed at once — a turn left to run out, never one ended.
+     */
+    static final Duration LINGER = Duration.ofMillis(1500);
+
     private final List<Consumer<String>> listeners = new CopyOnWriteArrayList<>();
     private final Executor dispatcher;
     private final LongSupplier nanos;
 
-    private String lastFighter;
-    private long lastSeenNanos;
+    /** Whose turn it is, as last reported; {@code null} before the first. */
+    private String current;
+    private final Map<String, Long> lastSeen = new HashMap<>();
 
     public FightTurns() {
         this(Executors.newVirtualThreadPerTaskExecutor(), System::nanoTime);
@@ -62,22 +76,28 @@ public final class FightTurns {
         listeners.add(listener);
     }
 
-    /** A source saw {@code fighter}'s turn begin — or still saw it going on. */
+    /** A source saw {@code fighter}'s turn begin — or still saw it going on, or saw it late. */
     public void report(String fighter) {
-        if (isNewTurn(fighter)) {
+        if (begins(fighter.toLowerCase(Locale.ROOT))) {
             log.debug("Turn of '{}'.", fighter);
             listeners.forEach(listener -> dispatcher.execute(() -> tell(listener, fighter)));
         }
     }
 
-    private synchronized boolean isNewTurn(String fighter) {
+    private synchronized boolean begins(String fighter) {
         final var now = nanos.getAsLong();
-        final var same = lastFighter != null
-                && lastFighter.toLowerCase(Locale.ROOT).equals(fighter.toLowerCase(Locale.ROOT))
-                && now - lastSeenNanos < SAME_TURN.toNanos();
-        lastFighter = fighter;
-        lastSeenNanos = now;
-        return !same;
+        final var seen = lastSeen.get(fighter);
+        if (fighter.equals(current)) {
+            lastSeen.put(fighter, now);
+            return now - seen >= SAME_TURN.toNanos();
+        }
+        if (seen != null && now - seen < LINGER.toNanos()) {
+            log.debug("'{}' seen again after '{}': a banner left over, not a turn.", fighter, current);
+            return false;
+        }
+        current = fighter;
+        lastSeen.put(fighter, now);
+        return true;
     }
 
     private static void tell(Consumer<String> listener, String fighter) {
