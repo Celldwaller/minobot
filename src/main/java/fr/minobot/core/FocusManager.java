@@ -33,20 +33,26 @@ public final class FocusManager {
 
     private static final Logger log = LoggerFactory.getLogger(FocusManager.class);
 
-    private static final int ALT_SETTLE_MILLIS = 50;
+    /**
+     * Left to the ALT press before the foreground is asked for. Its cost is paid on every turn focused
+     * and passed, and its failure is loud: the "failed on first attempt" warning.
+     */
+    private static final int ALT_SETTLE_MILLIS = 20;
     private static final int RESTORE_SETTLE_MILLIS = 100;
 
     /** How long Windows is given to hand the foreground over before the focus is called a failure. */
     private static final Duration FOREGROUND_TIMEOUT = Duration.ofMillis(600);
-    private static final int FOREGROUND_POLL_MILLIS = 20;
+    /** Asking the OS who holds the foreground is cheap; every poll slept past the handover is not. */
+    private static final int FOREGROUND_POLL_MILLIS = 5;
 
     /**
      * Left to the window once it holds the foreground, before its new owner may type into it.
      *
      * <p>Being the foreground window and being ready to receive a keystroke are not the same instant:
-     * the activation messages are still on their way.
+     * the activation messages are still on their way. Too short, and the first keystroke — an auto-pass
+     * {@code F1} — is lost without a word.
      */
-    private static final int ACTIVATION_MILLIS = 50;
+    private static final int ACTIVATION_MILLIS = 30;
 
     /** Two toasts landing together — a burst — must not fight over the screen. */
     private static final Duration COOLDOWN = Duration.ofMillis(100);
@@ -157,6 +163,7 @@ public final class FocusManager {
         }
 
         log.debug("Focusing '{}' (HWND: {}).", name, hwnd);
+        final var start = System.nanoTime();
         try {
             // 1. Wake up the OS's focus logic; without this, step 4 is silently refused.
             input.pressKey(KeyEvent.VK_ALT);
@@ -173,7 +180,7 @@ public final class FocusManager {
             api.setForegroundWindow(hwnd);
 
             if (settled(hwnd)) {
-                log.debug("Successfully focused '{}'.", name);
+                log.debug("Successfully focused '{}' in {} ms.", name, (System.nanoTime() - start) / 1_000_000);
                 return true;
             }
 
@@ -182,7 +189,8 @@ public final class FocusManager {
             api.setForegroundWindow(hwnd);
 
             if (settled(hwnd)) {
-                log.debug("Successfully focused '{}' on second attempt.", name);
+                log.debug("Successfully focused '{}' on second attempt, in {} ms.",
+                        name, (System.nanoTime() - start) / 1_000_000);
                 return true;
             }
 
