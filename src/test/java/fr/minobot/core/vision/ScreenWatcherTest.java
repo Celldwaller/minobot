@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ScreenWatcherTest {
 
     private final List<String> read = new CopyOnWriteArrayList<>();
-    private final ScreenReader recorder = (window, _) -> read.add(window.name());
+    private final ScreenReader recorder = (window, _, _) -> read.add(window.name());
 
     private ScreenWatcher watching(FakeWindowApi api, ScreenReader... readers) {
         final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
@@ -50,12 +50,25 @@ class ScreenWatcherTest {
     @DisplayName("one capture a look, read by every reader")
     void handsOneCaptureToEveryReader() {
         final var others = new CopyOnWriteArrayList<String>();
-        final var watcher = watching(threeCharacters(), recorder, (window, _) -> others.add(window.name()));
+        final var watcher = watching(threeCharacters(), recorder, (window, _, _) -> others.add(window.name()));
 
         watcher.look();
 
         assertThat(read).containsExactly("Alpha");
         assertThat(others).containsExactly("Alpha");
+    }
+
+    @Test
+    @DisplayName("the readers are told when the capture was taken, to time what follows from it")
+    void tellsWhenTheCaptureWasTaken() {
+        final var seen = new CopyOnWriteArrayList<Long>();
+        final var watcher = watching(threeCharacters(), (_, _, seenAt) -> seen.add(seenAt));
+
+        final var before = System.nanoTime();
+        watcher.look();
+        final var after = System.nanoTime();
+
+        assertThat(seen).singleElement().satisfies(seenAt -> assertThat(seenAt).isBetween(before, after));
     }
 
     @Test
