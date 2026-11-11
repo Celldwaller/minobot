@@ -15,6 +15,7 @@ import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.ExchangeAccepter;
 import fr.minobot.feature.notification.NotificationListener;
 import fr.minobot.feature.notification.RequestFocuser;
+import fr.minobot.feature.notification.RequestToasts;
 import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
 import fr.minobot.feature.notification.WhisperToaster;
@@ -163,6 +164,10 @@ public final class Features {
 
     public RequestFocuser requestFocuser() {
         return new RequestFocuser(windows, focus, requests, activity, (_, _) -> false);
+    }
+
+    public RequestToasts requestToasts() {
+        return new RequestToasts(windows, notifications, requests);
     }
 
     /** A character's window on this desktop, as the features know it. */

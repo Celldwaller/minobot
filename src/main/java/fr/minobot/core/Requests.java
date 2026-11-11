@@ -66,8 +66,8 @@ public final class Requests {
     }
 
     /**
-     * A request is about to be made of {@code receiver} — the invitation relay has just sent it. Until it
-     * is seen there, or {@code within} runs out, the screen watcher looks at that window and no other: left
+     * A request is about to be made of {@code receiver} — the invitation relay has just sent it, or its
+     * toast has just come. Until it is seen there, or {@code within} runs out, the screen watcher looks at that window and no other: left
      * to its round, it reaches the window a whole round late — two seconds with eight characters, at
      * every step of the relay.
      */

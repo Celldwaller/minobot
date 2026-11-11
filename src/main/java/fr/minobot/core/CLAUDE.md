@@ -33,7 +33,7 @@ own would be a feature the panel cannot show.
 **The game is read off the screen rather than off its toasts** — a toast goes deaf on a window the
 multi-click has posted to, the screen does not. Turns and requests come from the screen only; their
 toasts are merely **claimed** (`TurnToasts.claims`, `RequestToasts.claims`) so the notification
-auto-focus leaves them alone. Whispers excepted: they stay on the toasts.
+auto-focus leaves them alone — a request toast at most points the screen watcher at the window it names. Whispers excepted: they stay on the toasts.
 
 A turn is seen through the **banner** that opens it on the screen, read through the OCR — several times
 over the second it stands, and in every window. Each sighting is reported to **`FightTurns`**, and the
@@ -57,7 +57,7 @@ a turn reported within the last minute — **round** the characters' windows, in
 login screen; a minimized one gives its look to the next), and hands each capture to every
 `ScreenReader`: the banner is in every window, so turns are still read at 4 Hz (10 Hz in a fight, where half a pace is what every auto-pass waits); a box is only in its own
 window, so it is found within one round — a second for four characters. A box **awaited**
-(`Requests.expect`, the invitation relay's) does not wait for the round: that window alone is looked at,
+(`Requests.expect`: by the invitation relay, or by a request toast) does not wait for the round: that window alone is looked at,
 at the fight's pace, until it is seen. One capture a look is the cost,
 whatever the number of readers; the watcher logs what its looks cost at debug, every 40 looks — read
 that before optimizing anything. Each reader gets its own `RememberingTextReader`: a banner or a box
