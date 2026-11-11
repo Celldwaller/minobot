@@ -68,11 +68,19 @@ public final class ScreenWatcher {
         }
     }
 
+    /**
+     * A look every {@link #POLL}, the look's own time included: slept after it, a look of 150 ms made
+     * the turn banner read every 400 ms, not every 250.
+     */
     private void watch() {
         try {
             while (thread.get() == Thread.currentThread()) {
+                final var start = System.nanoTime();
                 lookOnce();
-                Thread.sleep(POLL);
+                final var left = POLL.minusNanos(System.nanoTime() - start);
+                if (left.isPositive()) {
+                    Thread.sleep(left);
+                }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
