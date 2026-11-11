@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>A relay: the first character invites the second, the second accepts and invites the third, and
  * so on. Each step needs the previous one to have actually landed in the game, which is where
- * {@link Requests} comes in: the invited character is asked — a box on their screen, a toast — and the
+ * {@link Requests} comes in: the invited character is asked — a box on their screen — and the
  * sequence waits for that rather than guessing a delay.
  *
  * <p>The relay types into the game, so it holds the foreground from end to end
@@ -37,8 +37,8 @@ public final class GroupManager {
     private static final Logger log = LoggerFactory.getLogger(GroupManager.class);
 
     /**
-     * How long the game is given to show the invitation. On screen, the box is found when the watcher's
-     * round comes to the invited window — two seconds for eight characters.
+     * How long the game is given to show the invitation. The screen watcher looks at the invited window
+     * alone until then ({@link Requests#expect}), so the box is found within a look of being drawn.
      */
     private static final Duration CONFIRMATION_TIMEOUT = Duration.ofSeconds(5);
 
@@ -56,6 +56,7 @@ public final class GroupManager {
     private final Input input;
     private final FocusManager focus;
     private final ActivityLog activity;
+    private final Requests requests;
 
     private final AtomicBoolean running = new AtomicBoolean();
 
@@ -68,6 +69,7 @@ public final class GroupManager {
         this.input = input;
         this.focus = focus;
         this.activity = activity;
+        this.requests = requests;
 
         requests.onRequest(this::onRequest);
     }
@@ -131,6 +133,8 @@ public final class GroupManager {
 
         // Armed before the command goes out: the invitation can be seen before we reach the wait below.
         final var confirmation = expectInvitationFor(invitee.name());
+        // Points the screen at the invitee: on its own round it would reach their box a whole round late.
+        requests.expect(invitee, CONFIRMATION_TIMEOUT);
 
         return sendInvite(inviter, invitee.name())
                 && confirmed(confirmation)

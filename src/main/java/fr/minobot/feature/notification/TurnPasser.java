@@ -17,8 +17,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * Ends the turn of a character the game says it is the turn of — the feature the overlay's
  * <em>Auto-pass turns</em> switch drives.
  *
- * <p>It hears of a turn from {@link FightTurns}: the game's turn toast, or the banner that opens the turn
- * on the screen — the banner being what still speaks for a window gone deaf to toasts. When the switch is
+ * <p>It hears of a turn from {@link FightTurns}: the banner that opens the turn on the screen, which
+ * still speaks for a window gone deaf to toasts. When the switch is
  * on, it turns that turn into a keypress — it brings the character up and presses the game's end-turn
  * key — so a table of alts plays itself while the player watches.
  *

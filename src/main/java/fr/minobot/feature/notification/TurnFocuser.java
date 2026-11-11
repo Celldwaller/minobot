@@ -10,8 +10,7 @@ import fr.minobot.core.WindowManager;
  *
  * <p>It used to be the turn toast that did this, through the notification auto-focus. But a window the
  * multi-click has posted to goes deaf to toasts, and its turns then came and went with nobody called.
- * It listens to {@link FightTurns} instead, which hears of the turn from the toast <em>or</em> from the
- * banner on the screen.
+ * It listens to {@link FightTurns} instead, which hears of the turn from the banner on the screen.
  *
  * <p>It yields like every auto-focus ({@link Summoner}), so never from under auto-pass, which holds the
  * foreground while it ends the turn. A monster's turn, or another player's character's, names nobody with

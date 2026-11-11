@@ -17,11 +17,10 @@ import java.util.function.LongSupplier;
 /**
  * The turns of a fight, one announcement per turn, whoever saw it begin.
  *
- * <p>A turn is seen more than once. The game raises a toast for it — unless the window has gone deaf to
- * toasts, which a posted click does to it — and draws a banner that the screen watcher reads several
- * times over the second it stands. A feature that ends a turn must hear of it once: a second {@code F1}
- * pressed into a window ends whatever turn it is there by then. So every source reports here, and the
- * features listen here, to neither source in particular.
+ * <p>A turn is seen more than once. The game draws a banner for it in every window, and the screen
+ * watcher reads it several times over the second it stands, window after window. A feature that ends a
+ * turn must hear of it once: a second {@code F1} pressed into a window ends whatever turn it is there by
+ * then. So every sighting is reported here, and the features listen here.
  *
  * <p>The same fighter reported again is the same turn, unless another fighter was reported in between or
  * it has been quiet for {@link #SAME_TURN}. The fighter is anyone the banner names — a monster too: a
@@ -33,8 +32,8 @@ public final class FightTurns {
     private static final Logger log = LoggerFactory.getLogger(FightTurns.class);
 
     /**
-     * How far apart two sightings of one turn may arrive — the toast and the banner of a turn come within
-     * a second of each other. Two turns of the same fighter have another fighter's in between, and that
+     * How far apart two sightings of one turn may arrive — a banner stands about a second, and is read
+     * several times over it. Two turns of the same fighter have another fighter's in between, and that
      * one's banner is what separates them; this only matters when the banner was not read at all.
      */
     static final Duration SAME_TURN = Duration.ofSeconds(2);
@@ -50,7 +49,7 @@ public final class FightTurns {
     static final Duration LINGER = Duration.ofMillis(1500);
 
     /**
-     * How long a fight is taken to go on after the last banner or toast of a turn. Only a turn's start is
+     * How long a fight is taken to go on after the last banner of a turn. Only a turn's start is
      * seen, never its end nor the fight's: this must outlast one fighter's whole turn, the game's turn
      * timer included, or the fight is called over in the middle of a slow one.
      */

@@ -8,8 +8,10 @@ competes with it for the foreground; read `core/CLAUDE.md` (*The foreground is a
 ## Group invitation — `F8`
 
 A relay: the first character invites the second, who accepts and invites the third, and so on. Each
-step waits for the invited character to be **asked** — the box on their screen or the toast, through
-`core.Requests` — rather than guessing a delay. Nothing within five seconds and the relay **stops
+step waits for the invited character to be **asked** — the box on their screen, through `core.Requests` — rather than guessing a delay. Before each `/invite`
+it calls `Requests.expect(invitee)`, which points the screen watcher at that one window until the box is
+seen: left to its round, the watcher reached it a whole round late, two seconds a step with eight
+characters. Nothing within five seconds and the relay **stops
 there**: the ENTER that accepts an
 invitation, pressed in a window that has none on screen, opens the chat instead — and the next
 `/invite` is then typed into the game rather than into the chat. The relay owns the foreground from

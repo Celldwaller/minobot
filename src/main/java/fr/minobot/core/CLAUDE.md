@@ -28,17 +28,17 @@ hotkey's and every notification's virtual thread and read from the panel's, so e
 own deque. **There is one instance of each, shared** (wired in `MinobotApp`): a feature with a log of its
 own would be a feature the panel cannot show.
 
-## A fight turn, a request: two witnesses, heard once
+## A fight turn, a request: heard once
 
-**The direction is to read the game off the screen rather than off its toasts** — a toast goes deaf on a
-window the multi-click has posted to, the screen does not. Whispers excepted: they stay on the toasts.
+**The game is read off the screen rather than off its toasts** — a toast goes deaf on a window the
+multi-click has posted to, the screen does not. Turns and requests come from the screen only; their
+toasts are merely **claimed** (`TurnToasts.claims`, `RequestToasts.claims`) so the notification
+auto-focus leaves them alone. Whispers excepted: they stay on the toasts.
 
-A turn begins in two ways the application can see: the game's **turn toast**, and the **banner** that
-opens the turn on the screen, read through the OCR. The toast goes deaf on a window
-the multi-click has posted to; the banner does not. Each is reported to **`FightTurns`**, and the features
-that act on a turn (`TurnPasser`, `TurnFocuser`) listen there and to neither source: a turn seen as a toast
-*and* four times on the banner is **one** turn, because a second `F1` would end whichever turn is up by
-then. The same fighter again is the same turn unless another fighter was reported in between or it has
+A turn is seen through the **banner** that opens it on the screen, read through the OCR — several times
+over the second it stands, and in every window. Each sighting is reported to **`FightTurns`**, and the
+features that act on a turn (`TurnPasser`, `TurnFocuser`) listen there: a banner read four times is
+**one** turn, because a second `F1` would end whichever turn is up by then. The same fighter again is the same turn unless another fighter was reported in between or it has
 been quiet for `SAME_TURN` (2 s). But a fighter seen again within `LINGER` (1.5 s) of their last sighting,
 after another's, is **a banner left over**, not a turn: the watcher reads the windows one by one, and right
 after the next fighter's banner in one window another can still show the last one's — read as a turn, it
@@ -47,21 +47,23 @@ one character — so a listener matches the name **exactly** (`WindowManager.win
 `findWindow`) and a monster's turn finds no window.
 
 A **request** — a group invitation, a trade, a duel — is the same story per character: a box on the asked
-character's screen (`vision.RequestDialog`) and a toast, both worded the same (`domain.Request.in`), both
-reported to **`Requests`**, which the invitation relay, the trade accepter and the request auto-focus
-listen to. The box stays until answered and is re-read at every round, so a request is the same one as
-long as it keeps being seen within `SAME_REQUEST` (5 s). Both feeds share their dedupe (`Sightings`).
+character's screen (`vision.RequestDialog`, worded as `domain.Request.in` reads it), reported to
+**`Requests`**, which the invitation relay, the trade accepter and the request auto-focus listen to. The
+box stays until answered and is re-read at every round, so a request is the same one as long as it keeps
+being seen within `SAME_REQUEST` (5 s). Both hubs share their dedupe (`Sightings`).
 
 `vision.ScreenWatcher` captures **one** window every 250 ms — every 100 ms while `FightTurns.inFight()`,
-a turn reported within the last minute — **round** the characters' windows (not the
+a turn reported within the last minute — **round** the characters' windows, in the player's character order — the cycler's (not the
 login screen; a minimized one gives its look to the next), and hands each capture to every
 `ScreenReader`: the banner is in every window, so turns are still read at 4 Hz (10 Hz in a fight, where half a pace is what every auto-pass waits); a box is only in its own
-window, so it is found within one round — a second for four characters. One capture a look is the cost,
+window, so it is found within one round — a second for four characters. A box **awaited**
+(`Requests.expect`, the invitation relay's) does not wait for the round: that window alone is looked at,
+at the fight's pace, until it is seen. One capture a look is the cost,
 whatever the number of readers; the watcher logs what its looks cost at debug, every 40 looks — read
 that before optimizing anything. Each reader gets its own `RememberingTextReader`: a banner or a box
 standing still is the same strip look after look, and the same pixels are not handed to the OCR twice. It runs **always**, on a **platform** thread (each look is
 a native capture). Without an OCR language for the user, `MinobotApp` starts no watcher, and turns and
-requests are the toasts' alone.
+requests are not heard at all.
 
 ## Concurrency
 

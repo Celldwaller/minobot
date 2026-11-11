@@ -20,8 +20,8 @@ import static org.assertj.core.api.Assertions.fail;
  * The invitation relay, and the invitation that paces it.
  *
  * <p>{@code inviteAll} blocks on each step until the invited character is asked, so the tests run it on
- * its own thread and report the invitations — which is what the screen watcher and the toasts do in
- * production, from threads of their own.
+ * its own thread and report the invitations — which is what the screen watcher does in production,
+ * from a thread of its own.
  */
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 class GroupManagerTest {
@@ -50,9 +50,11 @@ class GroupManagerTest {
         final var sequence = Thread.ofVirtual().start(groupManager::inviteAll);
 
         awaitPaste(input, "/invite Bravo");
+        assertThat(features.requests().awaited()).as("the screen is pointed at the invitee").isEqualTo(2);
         invite(features, "Bravo");
 
         awaitPaste(input, "/invite Delta");
+        assertThat(features.requests().awaited()).isEqualTo(3);
         invite(features, "Delta");
 
         sequence.join();

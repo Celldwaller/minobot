@@ -3,9 +3,11 @@ package fr.minobot.core;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Request;
 import fr.minobot.core.domain.Request.Kind;
+import fr.minobot.win32.Win32;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -32,7 +34,7 @@ class RequestsTest {
     }
 
     @Test
-    @DisplayName("a box seen at every round of the watcher, and its toast, make one request")
+    @DisplayName("a box seen at every round of the watcher, in any case, makes one request")
     void hearsARequestOnce() {
         requests.report(BRAVO, TRADE);
         elapse(1000);
@@ -71,5 +73,29 @@ class RequestsTest {
         requests.report(BRAVO, TRADE);
 
         assertThat(heard).containsExactly("Bravo TRADE", "Bravo TRADE");
+    }
+
+    @Test
+    @DisplayName("a request awaited on a window is awaited there until it is seen")
+    void awaitsARequestUntilItIsSeen() {
+        assertThat(requests.awaited()).isEqualTo(Win32.NULL_HANDLE);
+
+        requests.expect(BRAVO, Duration.ofSeconds(5));
+        requests.report(ALPHA, TRADE);
+        assertThat(requests.awaited()).as("another character's request").isEqualTo(BRAVO.hwnd());
+
+        requests.report(BRAVO, TRADE);
+        assertThat(requests.awaited()).isEqualTo(Win32.NULL_HANDLE);
+    }
+
+    @Test
+    @DisplayName("a request that never comes is awaited no longer than asked")
+    void stopsAwaitingInTime() {
+        requests.expect(BRAVO, Duration.ofSeconds(5));
+        elapse(4999);
+        assertThat(requests.awaited()).isEqualTo(BRAVO.hwnd());
+
+        elapse(2);
+        assertThat(requests.awaited()).isEqualTo(Win32.NULL_HANDLE);
     }
 }

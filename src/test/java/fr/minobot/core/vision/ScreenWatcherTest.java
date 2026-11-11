@@ -3,6 +3,7 @@ package fr.minobot.core.vision;
 import fr.minobot.app.TestConfigs;
 import fr.minobot.core.WindowManager;
 import fr.minobot.win32.FakeWindowApi;
+import fr.minobot.win32.Win32;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static fr.minobot.core.vision.BannerCaptures.blank;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +47,41 @@ class ScreenWatcherTest {
         }
 
         assertThat(read).containsExactly("Alpha", "Bravo", "Delta", "Alpha");
+    }
+
+    @Test
+    @DisplayName("the round follows the player's character order, the cycler's")
+    void looksInTheCharacterOrder() {
+        final var api = threeCharacters();
+        final var windows = new WindowManager(api,
+                TestConfigs.settings(Map.of("characters", TestConfigs.characters("Delta", "Alpha", "Bravo"))));
+        final var watcher = new ScreenWatcher(api, windows, List.of(recorder));
+
+        for (var look = 0; look < 4; look++) {
+            watcher.look();
+        }
+
+        assertThat(read).containsExactly("Delta", "Alpha", "Bravo", "Delta");
+    }
+
+    @Test
+    @DisplayName("a window a request is awaited on is looked at every look, at a fight's pace, and the round then resumes")
+    void looksAtTheAwaitedWindow() {
+        final var api = threeCharacters();
+        final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
+        final var awaited = new AtomicLong(Win32.NULL_HANDLE);
+        final var watcher = new ScreenWatcher(api, windows, List.of(recorder), () -> false, awaited::get);
+
+        watcher.look();
+        awaited.set(3);
+        assertThat(watcher.pace()).isEqualTo(ScreenWatcher.FIGHT_POLL);
+        watcher.look();
+        watcher.look();
+        awaited.set(Win32.NULL_HANDLE);
+        watcher.look();
+
+        assertThat(read).containsExactly("Alpha", "Delta", "Delta", "Bravo");
+        assertThat(watcher.pace()).isEqualTo(ScreenWatcher.POLL);
     }
 
     @Test
