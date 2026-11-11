@@ -10,7 +10,7 @@ import java.util.Optional;
  * Reads, off a capture of a character's window, the request waiting there for a yes or a no.
  *
  * <p>The game asks in a box in the middle of the stage — a dark title bar ({@code Groupe},
- * {@code Echange}), a beige body with the question ({@code Bravo t'invite à rejoindre son groupe.
+ * {@code Echange}, {@code Défi}), a beige body with the question ({@code Bravo t'invite à rejoindre son groupe.
  * Acceptes-tu ?}), and {@code Oui} / {@code Non} below. It is drawn in the asked character's window only,
  * and stays there until it is answered. The box is checked by its colours before the question is read;
  * the question is then matched by its wording ({@link Request#in}), which names the asker.

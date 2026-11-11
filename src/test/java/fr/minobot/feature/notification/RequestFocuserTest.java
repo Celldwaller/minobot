@@ -41,6 +41,19 @@ class RequestFocuserTest {
     }
 
     @Test
+    @DisplayName("a duel takes the player to the character challenged")
+    void focusesTheCharacterChallenged() {
+        final var api = desktop();
+        final var features = new Features(api, Map.of());
+
+        features.requestFocuser().onRequest(features.window("Bravo"), new Request(Request.Kind.DUEL, "Zoro"));
+
+        assertThat(api.foregroundWindow()).isEqualTo(2);
+        assertThat(features.activity().recent()).singleElement()
+                .satisfies(entry -> assertThat(entry.detail()).isEqualTo("duel from Zoro"));
+    }
+
+    @Test
     @DisplayName("a request made of the character in front moves nothing, and notes nothing")
     void leavesTheCharacterInFront() {
         final var api = desktop();

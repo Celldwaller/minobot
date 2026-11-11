@@ -10,8 +10,8 @@ import fr.minobot.core.domain.Request;
 import java.util.function.BiPredicate;
 
 /**
- * Takes the player to the character something is asked of — the auto-focus, for a group invitation or an
- * exchange.
+ * Takes the player to the character something is asked of — the auto-focus, for a group invitation, an
+ * exchange or a duel.
  *
  * <p>Like the turn auto-focus, it hears of requests from {@link Requests}, from the toast or from the box
  * on the screen, so a window gone deaf to toasts still calls the player. It yields like every auto-focus
@@ -44,6 +44,7 @@ public final class RequestFocuser {
         return switch (request.kind()) {
             case GROUP_INVITE -> "group invite from " + request.asker();
             case TRADE -> "trade from " + request.asker();
+            case DUEL -> "duel from " + request.asker();
         };
     }
 }

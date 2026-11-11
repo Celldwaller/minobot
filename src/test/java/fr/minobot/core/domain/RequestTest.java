@@ -41,6 +41,16 @@ class RequestTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"Zoro te défie.", "Zoro te defie. Acceptes-tu ?", "zoro  te  défie en duel."})
+    @DisplayName("a duel names its challenger")
+    void readsADuel(String text) {
+        assertThat(Request.in(text)).hasValueSatisfying(request -> {
+            assertThat(request.kind()).isEqualTo(Kind.DUEL);
+            assertThat(request.asker()).isEqualToIgnoringCase("Zoro");
+        });
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"Vous êtes attaqué !", "C'est à \"Alpha\" de jouer", "Alpha défie Bravo", ""})
     @DisplayName("what asks nothing this application answers is no request")
     void readsNothingElse(String text) {
