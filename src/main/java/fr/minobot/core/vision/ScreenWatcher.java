@@ -109,7 +109,7 @@ public final class ScreenWatcher {
             final var capture = api.capture(window.hwnd());
             if (capture.isPresent()) {
                 final var captured = System.nanoTime();
-                readers.forEach(reader -> reader.read(window, capture.get()));
+                readers.forEach(reader -> reader.read(window, capture.get(), start));
                 times.add(captured - start, System.nanoTime() - captured);
                 return;
             }

@@ -38,6 +38,7 @@ public final class Requests {
 
     private final List<BiConsumer<GameWindow, Request>> listeners = new CopyOnWriteArrayList<>();
     private final Executor dispatcher;
+    private final LongSupplier nanos;
     private final Sightings<Long, Request> sightings;
 
     public Requests() {
@@ -51,6 +52,7 @@ public final class Requests {
      */
     public Requests(Executor dispatcher, LongSupplier nanos) {
         this.dispatcher = dispatcher;
+        this.nanos = nanos;
         this.sightings = new Sightings<>(SAME_REQUEST, nanos);
     }
 
@@ -61,16 +63,24 @@ public final class Requests {
 
     /** A source saw {@code request} made of {@code receiver} — or still saw it waiting there. */
     public void report(GameWindow receiver, Request request) {
+        report(receiver, request, nanos.getAsLong());
+    }
+
+    /** The same, from a source that knows when it saw the request — {@code seenAt} on the {@code nanos} clock. */
+    public void report(GameWindow receiver, Request request, long seenAt) {
         final var seen = new Request(request.kind(), request.asker().toLowerCase(Locale.ROOT));
         if (sightings.isNew(receiver.hwnd(), seen)) {
             log.debug("'{}' asks '{}': {}.", request.asker(), receiver.name(), request.kind());
-            listeners.forEach(listener -> dispatcher.execute(() -> tell(listener, receiver, request)));
+            listeners.forEach(listener -> dispatcher.execute(() -> tell(listener, receiver, request, seenAt)));
         }
     }
 
-    private static void tell(BiConsumer<GameWindow, Request> listener, GameWindow receiver, Request request) {
+    /** The delay is logged as in {@link FightTurns}: from the sighting to the listener's return. */
+    private void tell(BiConsumer<GameWindow, Request> listener, GameWindow receiver, Request request, long seenAt) {
         try {
             listener.accept(receiver, request);
+            log.debug("A listener of '{}'s {} returned {} ms after it was seen.",
+                    request.asker(), request.kind(), (nanos.getAsLong() - seenAt) / 1_000_000);
         } catch (RuntimeException e) {
             log.error("Error in a request listener.", e);
         }

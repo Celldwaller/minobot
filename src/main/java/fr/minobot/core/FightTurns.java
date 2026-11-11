@@ -78,9 +78,14 @@ public final class FightTurns {
 
     /** A source saw {@code fighter}'s turn begin — or still saw it going on, or saw it late. */
     public void report(String fighter) {
+        report(fighter, nanos.getAsLong());
+    }
+
+    /** The same, from a source that knows when it saw the turn — {@code seenAt} on the {@code nanos} clock. */
+    public void report(String fighter, long seenAt) {
         if (begins(fighter.toLowerCase(Locale.ROOT))) {
             log.debug("Turn of '{}'.", fighter);
-            listeners.forEach(listener -> dispatcher.execute(() -> tell(listener, fighter)));
+            listeners.forEach(listener -> dispatcher.execute(() -> tell(listener, fighter, seenAt)));
         }
     }
 
@@ -100,9 +105,15 @@ public final class FightTurns {
         return true;
     }
 
-    private static void tell(Consumer<String> listener, String fighter) {
+    /**
+     * The delay is logged from the sighting to the listener's return — its focus taken, its key pressed:
+     * what the player waits for is the whole of it, not the OCR's share alone.
+     */
+    private void tell(Consumer<String> listener, String fighter, long seenAt) {
         try {
             listener.accept(fighter);
+            log.debug("A listener of '{}'s turn returned {} ms after it was seen.",
+                    fighter, (nanos.getAsLong() - seenAt) / 1_000_000);
         } catch (RuntimeException e) {
             log.error("Error in a fight-turn listener.", e);
         }
