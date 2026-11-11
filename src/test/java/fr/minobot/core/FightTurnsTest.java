@@ -100,6 +100,27 @@ class FightTurnsTest {
     }
 
     @Test
+    @DisplayName("no fight before any turn is seen")
+    void noFightBeforeATurn() {
+        assertThat(turns.inFight()).isFalse();
+    }
+
+    @Test
+    @DisplayName("a fight goes on until no turn has been seen for a while, a left-over banner included")
+    void aFightOutlastsItsLastSighting() {
+        turns.report("Alpha");
+        elapse(250);
+        turns.report("Bravo");
+        elapse(250);
+        turns.report("Alpha");
+        elapse(FightTurns.FIGHT_GOES_ON.toMillis() - 1);
+        assertThat(turns.inFight()).isTrue();
+
+        elapse(1);
+        assertThat(turns.inFight()).isFalse();
+    }
+
+    @Test
     @DisplayName("a listener that throws does not keep the turn from the others")
     void survivesAFailingListener() {
         final var others = new FightTurns(Runnable::run, now::get);

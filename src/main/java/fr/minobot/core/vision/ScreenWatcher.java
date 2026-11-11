@@ -11,14 +11,15 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 
 /**
- * Looks at the characters' windows, one per {@link #POLL}, in turn, and hands each capture to every
- * {@link ScreenReader}.
+ * Looks at the characters' windows, one per {@link #POLL} — one per {@link #FIGHT_POLL} during a fight —
+ * in turn, and hands each capture to every {@link ScreenReader}.
  *
  * <p>In turn, because what is read is not all in the same place. The banner that opens a fight turn is
- * drawn in every window, so it is caught at every look, whichever window it is — four times over the
- * second it stands. A request is drawn only in the window of the character asked, and stays until it is
+ * drawn in every window, so it is caught at every look, whichever window it is — four to ten times over
+ * the second it stands. A request is drawn only in the window of the character asked, and stays until it is
  * answered, so it is caught once the round comes to that window: a second for four characters.
  *
  * <p>One capture a look, whatever the number of readers: a capture is the cost (about 20 ms of a 2560
@@ -31,9 +32,18 @@ public final class ScreenWatcher {
 
     static final Duration POLL = Duration.ofMillis(250);
 
+    /**
+     * The pace while a fight goes on. A turn is only heard of once a look catches its banner, so half a
+     * pace is what every auto-pass waits on average before anything else; out of a fight, a request box
+     * stays until answered and the slower pace is enough. A capture costs about 25 ms in game: the
+     * watching thread is busy a quarter of the fight.
+     */
+    static final Duration FIGHT_POLL = Duration.ofMillis(100);
+
     private final WindowApi api;
     private final WindowManager windows;
     private final List<ScreenReader> readers;
+    private final BooleanSupplier fighting;
 
     private final AtomicReference<Thread> thread = new AtomicReference<>();
 
@@ -44,9 +54,16 @@ public final class ScreenWatcher {
     private final LookTimes times = new LookTimes();
 
     public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers) {
+        this(api, windows, readers, () -> false);
+    }
+
+    /** @param fighting whether a fight goes on, asked before every look */
+    public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers,
+                         BooleanSupplier fighting) {
         this.api = api;
         this.windows = windows;
         this.readers = List.copyOf(readers);
+        this.fighting = fighting;
     }
 
     /**
@@ -69,15 +86,16 @@ public final class ScreenWatcher {
     }
 
     /**
-     * A look every {@link #POLL}, the look's own time included: slept after it, a look of 150 ms made
+     * A look every {@link #pace()}, the look's own time included: slept after it, a look of 150 ms made
      * the turn banner read every 400 ms, not every 250.
      */
     private void watch() {
         try {
             while (thread.get() == Thread.currentThread()) {
                 final var start = System.nanoTime();
+                final var pace = pace();
                 lookOnce();
-                final var left = POLL.minusNanos(System.nanoTime() - start);
+                final var left = pace.minusNanos(System.nanoTime() - start);
                 if (left.isPositive()) {
                     Thread.sleep(left);
                 }
@@ -85,6 +103,10 @@ public final class ScreenWatcher {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    Duration pace() {
+        return fighting.getAsBoolean() ? FIGHT_POLL : POLL;
     }
 
     /** A look that fails is the next look's to retry — except a bug, which would fail at every look. */
@@ -118,7 +140,7 @@ public final class ScreenWatcher {
 
     /**
      * What the looks cost, summed over {@link #REPORTED_EVERY} of them and logged at debug: a look runs
-     * four times a second for the whole session, so its price is measured, not assumed — and a line per
+     * four to ten times a second for the whole session, so its price is measured, not assumed — and a line per
      * look would drown the log.
      */
     private static final class LookTimes {
