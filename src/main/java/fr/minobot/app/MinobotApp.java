@@ -120,7 +120,8 @@ public final class MinobotApp {
         }
         this.screenWatcher = ocr.map(reader -> new ScreenWatcher(api, windowManager, List.of(
                 ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns),
-                ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests))));
+                ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests)),
+                fightTurns::inFight));
 
         this.multiClicker = new MultiWindowClicker(
                 api, windowManager, focusManager, flashSuppressor, settings, activityLog);

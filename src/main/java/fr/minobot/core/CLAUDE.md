@@ -52,9 +52,10 @@ reported to **`Requests`**, which the invitation relay, the trade accepter and t
 listen to. The box stays until answered and is re-read at every round, so a request is the same one as
 long as it keeps being seen within `SAME_REQUEST` (5 s). Both feeds share their dedupe (`Sightings`).
 
-`vision.ScreenWatcher` captures **one** window every 250 ms, **round** the characters' windows (not the
+`vision.ScreenWatcher` captures **one** window every 250 ms — every 100 ms while `FightTurns.inFight()`,
+a turn reported within the last minute — **round** the characters' windows (not the
 login screen; a minimized one gives its look to the next), and hands each capture to every
-`ScreenReader`: the banner is in every window, so turns are still read at 4 Hz; a box is only in its own
+`ScreenReader`: the banner is in every window, so turns are still read at 4 Hz (10 Hz in a fight, where half a pace is what every auto-pass waits); a box is only in its own
 window, so it is found within one round — a second for four characters. One capture a look is the cost,
 whatever the number of readers; the watcher logs what its looks cost at debug, every 40 looks — read
 that before optimizing anything. Each reader gets its own `RememberingTextReader`: a banner or a box

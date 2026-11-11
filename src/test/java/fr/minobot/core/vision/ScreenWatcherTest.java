@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static fr.minobot.core.vision.BannerCaptures.blank;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +45,19 @@ class ScreenWatcherTest {
         }
 
         assertThat(read).containsExactly("Alpha", "Bravo", "Delta", "Alpha");
+    }
+
+    @Test
+    @DisplayName("a look every 250 ms out of a fight, every 100 ms in one")
+    void looksFasterInAFight() {
+        final var api = threeCharacters();
+        final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
+        final var fighting = new AtomicBoolean();
+        final var watcher = new ScreenWatcher(api, windows, List.of(recorder), fighting::get);
+
+        assertThat(watcher.pace()).isEqualTo(ScreenWatcher.POLL);
+        fighting.set(true);
+        assertThat(watcher.pace()).isEqualTo(ScreenWatcher.FIGHT_POLL);
     }
 
     @Test

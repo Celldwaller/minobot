@@ -49,6 +49,13 @@ public final class FightTurns {
      */
     static final Duration LINGER = Duration.ofMillis(1500);
 
+    /**
+     * How long a fight is taken to go on after the last banner or toast of a turn. Only a turn's start is
+     * seen, never its end nor the fight's: this must outlast one fighter's whole turn, the game's turn
+     * timer included, or the fight is called over in the middle of a slow one.
+     */
+    static final Duration FIGHT_GOES_ON = Duration.ofSeconds(60);
+
     private final List<Consumer<String>> listeners = new CopyOnWriteArrayList<>();
     private final Executor dispatcher;
     private final LongSupplier nanos;
@@ -56,6 +63,9 @@ public final class FightTurns {
     /** Whose turn it is, as last reported; {@code null} before the first. */
     private String current;
     private final Map<String, Long> lastSeen = new HashMap<>();
+
+    /** When any turn was last reported, a left-over banner included; {@code null} before the first. */
+    private volatile Long lastSighting;
 
     public FightTurns() {
         this(Executors.newVirtualThreadPerTaskExecutor(), System::nanoTime);
@@ -89,8 +99,15 @@ public final class FightTurns {
         }
     }
 
+    /** Whether a fight seems to be going on: a turn was reported within {@link #FIGHT_GOES_ON}. */
+    public boolean inFight() {
+        final var last = lastSighting;
+        return last != null && nanos.getAsLong() - last < FIGHT_GOES_ON.toNanos();
+    }
+
     private synchronized boolean begins(String fighter) {
         final var now = nanos.getAsLong();
+        lastSighting = now;
         final var seen = lastSeen.get(fighter);
         if (fighter.equals(current)) {
             lastSeen.put(fighter, now);
