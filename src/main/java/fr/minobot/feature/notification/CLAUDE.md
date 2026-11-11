@@ -35,7 +35,11 @@ another player's character alone. A turn's fighter is matched by **exact** name 
 
 Requests go the same way: the box on screen (`vision.RequestDialog`) is reported to `core.Requests`, and
 `RequestToasts.claims` (the wording is `domain.Request.in`, shared with the box) keeps the invitation,
-trade and duel toasts from the notification auto-focus. The **request auto-focus** (`RequestFocuser`) answers them, through the same
+trade and duel toasts from the notification auto-focus. Unlike the turn toast, though, the request toast
+is **a hint**: it reports nothing, but it comes at once and names the character asked, so `RequestToasts`
+points the screen watcher at that window (`Requests.expect`, for `BOX_FOLLOWS_TOAST`) — a trade or a duel
+is started by the player by hand, and nothing else tells Minobot where the box is about to be drawn. A
+toast that never comes (a deaf window) leaves the box to the watcher's round. The **request auto-focus** (`RequestFocuser`) answers them, through the same
 `Summoner` as the turn auto-focus — and it has a `claims` seam of its own, a
 `BiPredicate<GameWindow, Request>`: it stands aside for the trades `ExchangeAccepter.claims` answers in
 place. The invitation relay (`group/`) listens to `Requests` too. A duel only the request auto-focus

@@ -148,6 +148,9 @@ public final class MinobotApp {
                 notification -> whisperToaster.claims(notification) || TurnToasts.claims(notification)
                         || RequestToasts.claims(notification));
 
+        // A request toast reports nothing, but it comes at once: it points the screen at the window it names.
+        new RequestToasts(windowManager, notificationManager, requests);
+
         // Takes the player to the character something is asked of, unless it is answered in place.
         new RequestFocuser(windowManager, focusManager, requests, activityLog, exchangeAccepter::claims);
 
