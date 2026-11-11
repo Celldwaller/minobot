@@ -1,6 +1,5 @@
 package fr.minobot.feature.notification;
 
-import fr.minobot.core.domain.Notification;
 import fr.minobot.feature.Features;
 import fr.minobot.win32.FakeWindowApi;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +12,8 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The turn-passer: which toasts end a turn, and which are none of its business.
+ * The turn-passer: which turns it ends, and which are none of its business. Which toasts are turns is
+ * {@link TurnToastsTest}'s.
  *
  * <p>Focusing a background window makes the real {@link fr.minobot.core.FocusManager} sleep through its
  * ALT dance, so the timeout is generous — the same shape as the invitation relay's tests.
@@ -28,11 +28,6 @@ class TurnPasserTest {
                 .withForeground(1);
     }
 
-    /** How the game words it: the character in the title, "de jouer" in the message. */
-    private static Notification turnOf(String character) {
-        return new Notification(character + " - Dofus Retro", "C'est à \"" + character + "\" de jouer");
-    }
-
     /** The feature reads its switch live, so a test turns it on the way the overlay does. */
     private static final Map<String, Object> ON = Map.of("auto_pass_turn", true);
 
@@ -42,7 +37,7 @@ class TurnPasserTest {
         final var api = desktop();
         final var features = new Features(api, ON);
 
-        features.turnPasser().onNotification(turnOf("Bravo"));
+        features.turnPasser().onTurn("Bravo");
 
         assertThat(api.foregroundWindow()).isEqualTo(2);
         assertThat(features.input().actions())
@@ -56,7 +51,7 @@ class TurnPasserTest {
         final var api = desktop().withForeground(2); // the player is sitting on Bravo
         final var features = new Features(api, ON);
 
-        features.turnPasser().onNotification(turnOf("Bravo"));
+        features.turnPasser().onTurn("Bravo");
 
         assertThat(features.input().actions())
                 .as("Bravo already holds the screen, so its turn is ended without a refocus")
@@ -69,60 +64,59 @@ class TurnPasserTest {
         final var api = desktop();
         final var features = new Features(api, Map.of()); // the default: off
 
-        features.turnPasser().onNotification(turnOf("Bravo"));
+        features.turnPasser().onTurn("Bravo");
 
         assertThat(features.input().actions()).isEmpty();
         assertThat(api.focusedWindows()).isEmpty();
     }
 
     @Test
-    @DisplayName("the overlay can flip it on mid-fight, and the very next toast is passed")
+    @DisplayName("the overlay can flip it on mid-fight, and the very next turn is passed")
     void readsTheSwitchLive() {
         final var api = desktop();
         final var features = new Features(api, Map.of());
         final var turnPasser = features.turnPasser();
 
         features.settings().update(config -> config.withAutoPassTurn(true));
-        turnPasser.onNotification(turnOf("Bravo"));
+        turnPasser.onTurn("Bravo");
 
         assertThat(features.input().actions()).contains("key:F1");
         assertThat(api.foregroundWindow()).isEqualTo(2);
     }
 
     @Test
-    @DisplayName("a game toast that is not a turn — an attack, an invitation — is left alone")
-    void ignoresToastsThatAreNotTurns() {
+    @DisplayName("a monster's turn, read off the banner, is nobody's to pass")
+    void ignoresAMonster() {
         final var api = desktop();
         final var features = new Features(api, ON);
 
-        features.turnPasser().onNotification(
-                new Notification("Bravo - Dofus Retro", "Vous êtes attaqué !"));
+        features.turnPasser().onTurn("Le Ouassingue");
 
         assertThat(features.input().actions()).isEmpty();
         assertThat(api.focusedWindows()).isEmpty();
     }
 
     @Test
-    @DisplayName("another application's toast is not ours to act on")
-    void ignoresForeignToasts() {
+    @DisplayName("a fighter whose name only contains a character's is not that character")
+    void matchesTheWholeName() {
         final var api = desktop();
         final var features = new Features(api, ON);
 
-        features.turnPasser().onNotification(new Notification("Slack", "C'est à toi de jouer"));
+        features.turnPasser().onTurn("Bra");
 
         assertThat(features.input().actions()).isEmpty();
-        assertThat(api.focusedWindows()).isEmpty();
     }
 
     @Test
-    @DisplayName("a turn for a character with no window on screen is reported, not acted on")
-    void ignoresAnUnknownCharacter() {
+    @DisplayName("a turn seen as a toast and again on the banner is passed once")
+    void passesATurnSeenTwiceOnce() {
         final var api = desktop();
         final var features = new Features(api, ON);
+        features.turnPasser();
 
-        features.turnPasser().onNotification(turnOf("Ghost"));
+        features.turns().report("Bravo");
+        features.turns().report("Bravo");
 
-        assertThat(features.input().actions()).isEmpty();
-        assertThat(api.focusedWindows()).isEmpty();
+        assertThat(features.input().actions()).containsOnlyOnce("key:F1");
     }
 }

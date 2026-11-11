@@ -3,6 +3,7 @@ package fr.minobot.feature;
 import fr.minobot.app.Settings;
 import fr.minobot.app.TestConfigs;
 import fr.minobot.core.ActivityLog;
+import fr.minobot.core.FightTurns;
 import fr.minobot.core.FlashSuppressor;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.NotificationManager;
@@ -12,7 +13,9 @@ import fr.minobot.core.input.FakeInput;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.ExchangeAccepter;
 import fr.minobot.feature.notification.NotificationListener;
+import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
+import fr.minobot.feature.notification.TurnToasts;
 import fr.minobot.feature.notification.WhisperToaster;
 import fr.minobot.feature.window.MultiWindowClicker;
 import fr.minobot.feature.window.WindowCycler;
@@ -50,6 +53,12 @@ public final class Features {
     /** Shared, as in production, and exposed so a test can read back what a feature noted. */
     private final ActivityLog activity = new ActivityLog();
     private final WhisperLog whispers = new WhisperLog();
+
+    /**
+     * Shared like the notifications, and told on the caller's thread: a test reports a turn and reads
+     * what the features did with it, with nothing left running behind it.
+     */
+    private final FightTurns turns = new FightTurns(Runnable::run, System::nanoTime);
 
     /** Never started: the tests hand the notifications to the features themselves. */
     private final NotificationManager notifications = new NotificationManager(Path.of("no-such-database.db"));
@@ -122,8 +131,26 @@ public final class Features {
                 FakeToastView::new);
     }
 
+    /** The real focus manager the features share — a test holds the foreground with it. */
+    public FocusManager focus() {
+        return focus;
+    }
+
+    /** Where every turn source reports, and every turn feature listens. */
+    public FightTurns turns() {
+        return turns;
+    }
+
     public TurnPasser turnPasser() {
-        return new TurnPasser(windows, input, focus, notifications, settings, activity);
+        return new TurnPasser(windows, input, focus, turns, settings, activity);
+    }
+
+    public TurnFocuser turnFocuser() {
+        return new TurnFocuser(windows, focus, turns, activity);
+    }
+
+    public TurnToasts turnToasts() {
+        return new TurnToasts(notifications, turns);
     }
 
     public ExchangeAccepter exchangeAccepter() {

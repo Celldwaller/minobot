@@ -21,10 +21,15 @@ point at it, prefix the command: `JAVA_HOME=C:\path\to\jdk-25 ./mvnw verify`.
 fr.minobot
 ├── Main            Entry point; single-instance lock on a ServerSocket (127.0.0.1:12345).
 ├── app/            MinobotApp (wires everything), Config, Settings, Feature, ConfigLoader, LoggerSetup.
-├── win32/          WindowApi (the interface), User32 (the FFM implementation), Win32, Point.
+├── win32/          WindowApi (the interface), User32 (the FFM implementation), Win32, Point, Capture
+│                   (a window's pixels); TextReader (OCR) and WindowsOcr (Windows.Media.Ocr over FFM).
 ├── core/           The Windows mechanics: WindowManager, FocusManager, KeyboardMonitor,
-│                   NotificationManager, FlashSuppressor, SystemTrayManager, Input / InputSimulator,
-│                   and the two records the panel reads back: ActivityLog, WhisperLog.
+│                   NotificationManager, FightTurns (each fight turn, heard once), FlashSuppressor,
+│                   SystemTrayManager, Input / InputSimulator, and the two records the panel reads
+│                   back: ActivityLog, WhisperLog.
+│   ├── vision/     Reading the game off a capture: GameStage (where the 742x556 stage sits in a
+│                   window), TurnBanner (the name on the banner that opens every fight turn),
+│                   TurnWatcher (reads it at 4 Hz and reports the turn to FightTurns).
 │   └── domain/     GameWindow (a character's window, and their name), Character (the player's part of
 │                   a character: name, class, sex), DofusClass, Sex, Notification (a toast),
 │                   Activity (one thing Minobot did), Whisper (one message received).
@@ -33,16 +38,22 @@ fr.minobot
     ├── window/         multi-window click, cycler, taskbar reorder.
     ├── group/          the invitation relay.
     ├── overlay/        the control panel and OverlayController.
-    └── notification/   the toast-driven features (auto-focus, auto-pass, auto-accept, whisper).
+    └── notification/   the toast- and turn-driven features (auto-focus, auto-pass, auto-accept,
+                        whisper).
 ```
 
-**A handful of interfaces are the only doors to the outside world:** `win32.WindowApi` (the screen),
-`core.Input` (the keyboard and mouse), and the `ui` views we draw — `OverlayView` (the panel),
-`ToastView` (the whisper stack), `BannerView` (the auto-pass banner). Everything else is code that runs
-in a test, on any OS, with no game running — which is why there are 215 tests.
+**A handful of interfaces are the only doors to the outside world:** `win32.WindowApi` (the screen,
+captures included), `win32.TextReader` (the OCR), `core.Input` (the keyboard and mouse), and the `ui`
+views we draw — `OverlayView` (the panel), `ToastView` (the whisper stack), `BannerView` (the auto-pass
+banner). Everything else is code that runs in a test, on any OS, with no game running — which is why
+there are 268 tests.
 
-**Keep it that way.** Do not call `user32.dll`, `java.awt.Robot` or Swing from anywhere but their
-implementations: a feature that reaches past `WindowApi` becomes untestable.
+**Keep it that way.** Do not call `user32.dll`, `combase.dll`, `java.awt.Robot` or Swing from anywhere
+but their implementations: a feature that reaches past `WindowApi` becomes untestable.
+
+**Reading the game off the screen** is measured, never guessed: `fr.minobot.tools.CaptureProbe` (a
+developer's tool, not a feature) saves what Minobot sees of every game window to `captures/` and
+re-reads a saved folder with `--read`. A position or colour in `core/vision` comes from such captures.
 
 ### A feature speaks of characters; only the core speaks of windows
 

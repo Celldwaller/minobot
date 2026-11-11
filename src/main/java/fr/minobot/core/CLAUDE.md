@@ -1,7 +1,7 @@
 # Core — the Windows mechanics
 
 `core/` is the machinery every feature stands on: `WindowManager`, `FocusManager`, `KeyboardMonitor`,
-`NotificationManager`, `FlashSuppressor`, `SystemTrayManager`, `ActivityLog`, `WhisperLog`, `input/`
+`NotificationManager`, `FightTurns`, `FlashSuppressor`, `SystemTrayManager`, `ActivityLog`, `WhisperLog`, `input/`
 (`Input`, `InputSimulator`), and `domain/` (`GameWindow`, `Character`, `DofusClass`, `Sex`,
 `Notification`, `Activity`, `Whisper`). It speaks of windows, handles and messages so the features above
 it can speak of characters.
@@ -27,6 +27,22 @@ asked, it is the log file that should be opened, not these made bigger. They are
 hotkey's and every notification's virtual thread and read from the panel's, so each synchronizes on its
 own deque. **There is one instance of each, shared** (wired in `MinobotApp`): a feature with a log of its
 own would be a feature the panel cannot show.
+
+## A fight turn has two witnesses, and is heard once
+
+A turn begins in two ways the application can see: the game's **turn toast**, and the **banner** that
+opens the turn on the screen, read by `vision.TurnWatcher` through the OCR. The toast goes deaf on a window
+the multi-click has posted to; the banner does not. Each is reported to **`FightTurns`**, and the features
+that act on a turn (`TurnPasser`, `TurnFocuser`) listen there and to neither source: a turn seen as a toast
+*and* four times on the banner is **one** turn, because a second `F1` would end whichever turn is up by
+then. The same fighter again is the same turn unless another fighter was reported in between or it has
+been quiet for `SAME_TURN` (2 s). The banner names monsters too — that is what separates two turns of
+one character — so a listener matches the name **exactly** (`WindowManager.windowOf`, never the substring
+`findWindow`) and a monster's turn finds no window.
+
+`TurnWatcher` looks at **one** window every 250 ms — the foreground game window, else the first one with a
+character — on a **platform** thread (each look is a native capture). Without an OCR language for the
+user, `MinobotApp` starts no watcher, and turns are the toasts' alone.
 
 ## Concurrency
 

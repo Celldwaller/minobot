@@ -83,6 +83,17 @@ public interface WindowApi {
     Optional<Rect> clientArea(long hwnd);
 
     /**
+     * The window's client area as it is drawn right now — empty if the handle is stale, the window is
+     * minimized, or Windows refused the capture.
+     *
+     * <p>It works on a window <em>behind</em> others and never touches the focus: the window is asked to
+     * paint itself into memory ({@code PrintWindow}), the screen is not read. That is what lets Minobot
+     * look at a background character without bringing them up — and why a minimized window, which
+     * paints nothing, cannot be captured.
+     */
+    Optional<Capture> capture(long hwnd);
+
+    /**
      * The window under the given screen point — possibly a child window, hence
      * {@link #parentWindow(long)} to walk back up to the game window.
      */
