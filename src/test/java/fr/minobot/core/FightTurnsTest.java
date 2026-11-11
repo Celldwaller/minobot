@@ -39,15 +39,43 @@ class FightTurnsTest {
     }
 
     @Test
-    @DisplayName("the same fighter after another fighter is a new turn, however soon")
+    @DisplayName("the same fighter after another fighter is a new turn, however short that one's")
     void anotherFighterInBetweenEndsTheTurn() {
         turns.report("Alpha");
-        elapse(300);
+        elapse(1000);
         turns.report("Le Ouassingue");
-        elapse(300);
+        elapse(FightTurns.LINGER.toMillis());
         turns.report("Alpha");
 
         assertThat(heard).containsExactly("Alpha", "Le Ouassingue", "Alpha");
+    }
+
+    @Test
+    @DisplayName("the last fighter's banner, still read in another window after the next one's, is no turn")
+    void aBannerLeftOverIsNoTurn() {
+        turns.report("Alpha");
+        elapse(250);
+        turns.report("Bravo");
+        elapse(250);
+        turns.report("Alpha");
+        elapse(250);
+        turns.report("Bravo");
+
+        assertThat(heard).containsExactly("Alpha", "Bravo");
+    }
+
+    @Test
+    @DisplayName("a banner left over does not end the turn it fell into")
+    void aBannerLeftOverKeepsTheTurn() {
+        turns.report("Alpha");
+        elapse(250);
+        turns.report("Bravo");
+        elapse(250);
+        turns.report("Alpha");
+        elapse(FightTurns.SAME_TURN.toMillis() - 500);
+        turns.report("Bravo");
+
+        assertThat(heard).containsExactly("Alpha", "Bravo");
     }
 
     @Test

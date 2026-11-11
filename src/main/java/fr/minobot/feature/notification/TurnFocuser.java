@@ -4,7 +4,6 @@ import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FightTurns;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.WindowManager;
-import fr.minobot.core.domain.GameWindow;
 
 /**
  * Takes the player to the character whose turn it is — the auto-focus, for a turn.
@@ -14,38 +13,23 @@ import fr.minobot.core.domain.GameWindow;
  * It listens to {@link FightTurns} instead, which hears of the turn from the toast <em>or</em> from the
  * banner on the screen.
  *
- * <p>It yields like the auto-focus ({@link FocusManager#focusIfIdle}): never from under a player who is
- * busy, never from under auto-pass, which holds the foreground while it ends the turn. A monster's turn,
- * or another player's character's, names nobody with a window here, and moves nothing.
+ * <p>It yields like every auto-focus ({@link Summoner}), so never from under auto-pass, which holds the
+ * foreground while it ends the turn. A monster's turn, or another player's character's, names nobody with
+ * a window here, and moves nothing.
  */
 public final class TurnFocuser {
 
     private final WindowManager windows;
-    private final FocusManager focus;
-    private final ActivityLog activity;
+    private final Summoner summoner;
 
     public TurnFocuser(WindowManager windows, FocusManager focus, FightTurns turns, ActivityLog activity) {
         this.windows = windows;
-        this.focus = focus;
-        this.activity = activity;
+        this.summoner = new Summoner(windows, focus, activity);
 
         turns.onTurn(this::onTurn);
     }
 
     void onTurn(String fighter) {
-        windows.windowOf(fighter)
-                .filter(character -> !isInFront(character))
-                .ifPresent(this::goTo);
-    }
-
-    private boolean isInFront(GameWindow character) {
-        return windows.foregroundGameWindow().filter(front -> front.hwnd() == character.hwnd()).isPresent();
-    }
-
-    /** Only a move that happened is noted, as the auto-focus does. */
-    private void goTo(GameWindow character) {
-        if (focus.focusIfIdle(character.hwnd())) {
-            activity.record("Switched to " + character.name(), "their turn");
-        }
+        windows.windowOf(fighter).ifPresent(character -> summoner.summon(character, "their turn"));
     }
 }

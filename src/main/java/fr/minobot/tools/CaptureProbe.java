@@ -3,6 +3,7 @@ package fr.minobot.tools;
 import fr.minobot.app.Config;
 import fr.minobot.app.Settings;
 import fr.minobot.core.WindowManager;
+import fr.minobot.core.vision.RequestDialog;
 import fr.minobot.core.vision.TurnBanner;
 import fr.minobot.win32.Capture;
 import fr.minobot.win32.User32;
@@ -19,7 +20,8 @@ import java.time.format.DateTimeFormatter;
 /**
  * A developer's probe, not a feature: captures every game window to PNG files, so what Minobot can
  * see of a background character — and where on it a given piece of the game's interface sits — can
- * be looked at before any feature is built on it. Each shot is also read by {@link TurnBanner}.
+ * be looked at before any feature is built on it. Each shot is also read by {@link TurnBanner} and
+ * {@link RequestDialog}.
  *
  * <pre>
  * java --enable-native-access=ALL-UNNAMED -cp target/minobot.jar fr.minobot.tools.CaptureProbe [shots] [intervalMs]
@@ -36,9 +38,9 @@ public final class CaptureProbe {
 
     static void main(String[] args) throws IOException, InterruptedException {
         final var ocr = WindowsOcr.start().orElseThrow(() -> new IllegalStateException("No Windows OCR language for this user."));
-        final var banner = new TurnBanner(ocr);
+        final var vision = new Vision(new TurnBanner(ocr), new RequestDialog(ocr));
         if (args.length == 2 && args[0].equals("--read")) {
-            reread(banner, Path.of(args[1]));
+            reread(vision, Path.of(args[1]));
             return;
         }
         final var shots = args.length > 0 ? Integer.parseInt(args[0]) : 1;
@@ -69,7 +71,7 @@ public final class CaptureProbe {
                 ImageIO.write(image(capture.get()), "png", file.toFile());
                 System.out.printf("%-20s shot %d: %dx%d in %d ms, %s%s -> %s%n", window.name(), shot,
                         capture.get().width(), capture.get().height(), tookMs,
-                        banner.fighter(capture.get()).map(name -> "banner: " + name).orElse("no banner"),
+                        vision.describe(capture.get()),
                         capture.get().isUniform() ? " (UNIFORM: nothing was really painted)" : "", file);
             }
             if (shot < shots) {
@@ -78,11 +80,20 @@ public final class CaptureProbe {
         }
     }
 
-    private static void reread(TurnBanner banner, Path folder) throws IOException {
+    private static void reread(Vision vision, Path folder) throws IOException {
         try (final var files = Files.list(folder)) {
             for (final var file : files.filter(f -> f.toString().endsWith(".png")).sorted().toList()) {
-                System.out.printf("%-30s %s%n", file.getFileName(), banner.fighter(capture(ImageIO.read(file.toFile()))).map(name -> "banner: " + name).orElse("-"));
+                System.out.printf("%-30s %s%n", file.getFileName(), vision.describe(capture(ImageIO.read(file.toFile()))));
             }
+        }
+    }
+
+    /** Everything Minobot reads off a game window, said in one line. */
+    private record Vision(TurnBanner banner, RequestDialog dialog) {
+
+        String describe(Capture capture) {
+            return banner.fighter(capture).map(name -> "banner: " + name).orElse("no banner")
+                    + dialog.request(capture).map(request -> ", request: " + request).orElse("");
         }
     }
 

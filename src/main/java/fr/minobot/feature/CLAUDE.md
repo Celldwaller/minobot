@@ -18,14 +18,15 @@ you work in the subtree it governs — none of them is loaded just because you o
   window cycler (`x2` / `shift+x2`), the taskbar reorder (`F9`).
 - **`group/`** — the party: the group-invitation relay (`F8`).
 - **`overlay/`** — the control panel drawn over the game (`shift+space`), and its `OverlayController`.
-- **`notification/`** — the features that live on the game's Windows toasts and on the fight's turns:
-  the notification auto-focus, the turn auto-focus, auto-pass turns, auto-accept trades, and the whisper
-  toast. They coordinate through a
-  `claims(Notification)` seam, so read that package before touching any one of them.
+- **`notification/`** — the features that answer what the game calls out — by toast, or on screen through
+  `core`'s `FightTurns` and `Requests`: the notification, turn and request auto-focus, auto-pass turns,
+  auto-accept trades, and the whisper toast. They coordinate through `claims` seams, so read that package
+  before touching any one of them.
 
 ## Testing
 
 Feature tests sit **in the same package as the feature they drive**: a test reaches the feature's
-package-private `onNotification` to hand it a toast the way `NotificationManager` would. The one shared
+package-private `onNotification` / `onTurn` / `onRequest` to hand it what its source would — or reports
+through `Features.turns()` / `Features.requests()`, which tell every listener on the test's thread. The one shared
 helper, `Features` (in this root test package, `public` so every subpackage test can use it), wires a
 feature onto a `FakeWindowApi`/`FakeInput` desktop exactly as `MinobotApp` wires it onto the real one.

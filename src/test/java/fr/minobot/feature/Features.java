@@ -7,12 +7,15 @@ import fr.minobot.core.FightTurns;
 import fr.minobot.core.FlashSuppressor;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.NotificationManager;
+import fr.minobot.core.Requests;
 import fr.minobot.core.WhisperLog;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.input.FakeInput;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.ExchangeAccepter;
 import fr.minobot.feature.notification.NotificationListener;
+import fr.minobot.feature.notification.RequestFocuser;
+import fr.minobot.feature.notification.RequestToasts;
 import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
 import fr.minobot.feature.notification.TurnToasts;
@@ -28,6 +31,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Notification;
 
 /**
@@ -59,6 +63,7 @@ public final class Features {
      * what the features did with it, with nothing left running behind it.
      */
     private final FightTurns turns = new FightTurns(Runnable::run, System::nanoTime);
+    private final Requests requests = new Requests(Runnable::run, System::nanoTime);
 
     /** Never started: the tests hand the notifications to the features themselves. */
     private final NotificationManager notifications = new NotificationManager(Path.of("no-such-database.db"));
@@ -104,16 +109,11 @@ public final class Features {
     }
 
     public GroupManager groupManager() {
-        return new GroupManager(windows, input, focus, notifications, activity);
+        return new GroupManager(windows, input, focus, requests, activity);
     }
 
     public NotificationListener notificationListener() {
         return new NotificationListener(windows, focus, notifications, activity);
-    }
-
-    /** The auto-focus wired to stand aside for the toasts the trade-accepter answers in place. */
-    public NotificationListener notificationListener(ExchangeAccepter accepter) {
-        return new NotificationListener(windows, focus, notifications, activity, accepter::claims);
     }
 
     /** The auto-focus wired to stand aside for whatever the given predicate claims. */
@@ -154,6 +154,29 @@ public final class Features {
     }
 
     public ExchangeAccepter exchangeAccepter() {
-        return new ExchangeAccepter(api, windows, input, focus, notifications, settings, activity);
+        return new ExchangeAccepter(api, windows, input, focus, requests, settings, activity);
+    }
+
+    /** Where every request source reports, and every request feature listens. */
+    public Requests requests() {
+        return requests;
+    }
+
+    /** The request auto-focus, standing aside for the trades the given accepter answers in place. */
+    public RequestFocuser requestFocuser(ExchangeAccepter accepter) {
+        return new RequestFocuser(windows, focus, requests, activity, accepter::claims);
+    }
+
+    public RequestFocuser requestFocuser() {
+        return new RequestFocuser(windows, focus, requests, activity, (_, _) -> false);
+    }
+
+    public RequestToasts requestToasts() {
+        return new RequestToasts(windows, notifications, requests);
+    }
+
+    /** A character's window on this desktop, as the features know it. */
+    public GameWindow window(String character) {
+        return windows.windowOf(character).orElseThrow();
     }
 }

@@ -1,18 +1,19 @@
-# The toast-driven features
+# The features that answer the game's calls
 
-The features that live on the game's **Windows toasts**. The game raises one when a background
-character is attacked, invited, messaged, offered a trade, or has a turn to play; these features turn
-that toast into an action. Each **speaks of characters** (`GameWindow`) and keeps the Windows detail —
+The features that answer what the game calls out: a character attacked, invited, messaged, offered a
+trade, or with a turn to play. The game says it in a **Windows toast** — and, for turns and requests, on
+the **screen**, which keeps speaking for a window gone deaf to toasts (see `core/CLAUDE.md`). These
+features turn that call into an action. Each **speaks of characters** (`GameWindow`) and keeps the Windows detail —
 the French wording a message is matched by — in one named constant. Read `core/CLAUDE.md` (*The
 foreground is a single resource*) before touching any of them: they all react to the same stream and
 compete for the one screen.
 
-## The `claims` seam
+## The `claims` seams
 
 The **notification auto-focus** (`NotificationListener`) answers *every* game toast by pulling the
-screen to the character it names. Some toasts, though, are answered **in place** by another feature — a
-whisper becomes a card, an internal trade accepts itself — and the auto-focus must not also jump to
-them. So each of those features exposes a **pure `claims(Notification)`**, and the auto-focus is built
+screen to the character it names. Some toasts, though, are answered elsewhere — a whisper becomes a card,
+a turn or a request is handed to `FightTurns` / `Requests` and answered there — and the auto-focus must
+not also jump to them. So each of those features exposes a **pure `claims(Notification)`**, and the auto-focus is built
 with the **OR** of them (combined in `MinobotApp`): both sides decide the same, from the same toast,
 with no handshake and no race. A new feature that answers a toast silently adds its `claims` to that OR
 and nothing else.
@@ -21,16 +22,23 @@ and nothing else.
 invitation relay in `group/` is tested directly against it (a toast must not steal the foreground from
 the relay's keystrokes), and that test lives in another package.
 
-## Turns — heard from `FightTurns`, not from a toast
+## Turns and requests — heard from `FightTurns` and `Requests`, not from a toast
 
 The two turn features do **not** register with `NotificationManager`. A turn is reported to
 `core.FightTurns` by `TurnToasts` (the game's toast, `C'est à "Bravo" de jouer` — the wording kept there)
-and by `core.vision.TurnWatcher` (the banner on the screen, which still speaks for a window gone deaf to
+and by `core.vision.ScreenWatcher` (the banner on the screen, which still speaks for a window gone deaf to
 toasts), and they listen there, so a turn seen both ways is acted on once — see `core/CLAUDE.md`.
 `TurnToasts.claims` joins the auto-focus's OR: the turn toast is the **turn auto-focus**'s
 (`TurnFocuser`) to answer, which takes the player to the character whose turn it is with the same yielding
 `focusIfIdle`, and leaves the character already in front, a monster, or another player's character alone.
 A turn's fighter is matched by **exact** name (`WindowManager.windowOf`).
+
+Requests go the same way: `RequestToasts` reports the invitation and trade toasts to `core.Requests`
+(the wording is `domain.Request.in`, shared with the box on screen), and claims them from the
+notification auto-focus. The **request auto-focus** (`RequestFocuser`) answers them, through the same
+`Summoner` as the turn auto-focus — and it has a `claims` seam of its own, a
+`BiPredicate<GameWindow, Request>`: it stands aside for the trades `ExchangeAccepter.claims` answers in
+place. The invitation relay (`group/`) listens to `Requests` too.
 
 ## Auto-pass turns — the overlay's switch, a toggle key, and a banner
 
@@ -82,25 +90,24 @@ does both jobs well.
 ## Auto-accept trades — no hotkey, the overlay's switch
 
 Accepts a trade one of the player's own characters asks of another. When A opens an exchange with B,
-it is **B** that the game raises a toast for — `Alpha te propose de faire un échange` — and that toast
-**names the asker** (in the message, no quotes). That name is the whole discriminator: the trade is
-*internal* when the message carries the name of one of the player's own windows (the receiver's own name
-excepted, since it is one of ours too), and it accepts it for them; a stranger's is left exactly as it
-was.
+it is **B** that the game asks — a box on B's screen and a toast, `Alpha te propose de faire un échange`
+— and the question **names the asker**. It hears of it from `core.Requests`, so the box and the toast
+make one request and one ENTER. That name is the whole discriminator: the trade is *internal* when it is
+the name of one of the player's own windows (the receiver excepted), and it accepts it for them; a
+stranger's is left exactly as it was.
 
 The accept presses the game's accept key (`ENTER`, a constant). Sending a keystroke needs the window to
 hold the keyboard, so — for now — the accept is a **blink**: `takeOver()`, focus B, press, then focus
 straight back to where the player was (read before the blink). `accept()` is the one method to change if
 a truly background posted keystroke is ever shown to work against the game.
 
-**This is where it "thinks differently" from the auto-focus.** The notification auto-focus answers
-*every* game toast, so on its own it would jump to B and undo the point of accepting in place. So
-`NotificationListener` takes the `claims` predicate above and stands aside when it fires;
-`ExchangeAccepter.claims()` is a **pure function** of the toast, the switch and the windows, so both
-features decide the same without a handshake and without a race. A **stranger's** trade is not claimed:
-the auto-focus takes the player to the receiving window and does nothing else, which is exactly what a
-real trade offer deserves. The asker's name is matched as a **whole word** (`SuperAlpha` is not our
-`Alpha`). **On by default** — passing items between one's own accounts is the daily bread of
+**This is where it "thinks differently" from the auto-focus.** The request auto-focus answers every
+request, so on its own it would jump to B and undo the point of accepting in place. So `RequestFocuser`
+takes `ExchangeAccepter::claims` and stands aside when it fires; `claims(receiver, request)` is a **pure
+function** of the request, the switch and the windows, so both features decide the same without a
+handshake and without a race. A **stranger's** trade is not claimed: the auto-focus takes the player to
+the receiving window and does nothing else, which is exactly what a real trade offer deserves. The asker
+is matched by their **whole name** (`WindowManager.windowOf`: `SuperAlpha` is not our `Alpha`). **On by default** — passing items between one's own accounts is the daily bread of
 multi-boxing, and it only ever fires on a trade a player's own character asked for — and session-only
 like the other switch (not persisted to `overlay.json`).
 
@@ -116,9 +123,8 @@ the title), by whom, and what they said. The card lives five seconds (`TOAST_LIF
 takes it down early, and a **click** on it focuses the receiver so the player can answer (on a virtual
 thread — `FocusManager` sleeps). Several whispers **stack**, newest at the bottom.
 
-It is the mirror of `ExchangeAccepter`: a feature that registers with
-`NotificationManager`, speaks of characters, and exposes a **pure `claims(Notification)`** the auto-focus
-consults. Its one novelty is a **UI surface**, cut on the overlay's interface/impl seam so all the
+It is a feature that registers with `NotificationManager`, speaks of characters, and exposes a **pure
+`claims(Notification)`** the auto-focus consults. Its one novelty is a **UI surface**, cut on the overlay's interface/impl seam so all the
 deciding stays testable with no screen: `ui/ToastContent` (the immutable snapshot), `ui/ToastActions`
 (`open`/`dismiss`), `ui/ToastView` (the narrow port), and `ui/SwingToastStack` (the only whisper class
 that knows Swing — the **same anti-focus discipline** as the overlay: `JWindow`, always-on-top,
@@ -144,9 +150,8 @@ The game raises a toast when a background character is attacked, messaged or inv
 the focus to them. It is a *smart* focus: if the player is typing at that moment, their keystrokes are
 not stolen.
 
-It **stands aside**, though, for a toast another feature answers in place — see *Auto-accept trades* and
-*Whisper toast*: a `Predicate<Notification>` it is built with tells it which toasts to leave alone, so it
-never jumps to a character whose exchange is being accepted silently, nor to one whose whisper is already
-a card at the edge. The predicate is the **OR** of the trade-accepter's, the whisper toaster's and the
-turn toasts' `claims`, combined in `MinobotApp`; every other toast, an attack or an invitation, it still
-takes.
+It **stands aside**, though, for a toast answered elsewhere: a `Predicate<Notification>` it is built with
+tells it which toasts to leave alone — a whisper already a card at the edge, a turn or a request, which
+the turn and request auto-focus answer from the screen as well. The predicate is the **OR** of the
+whisper toaster's, the turn toasts' and the request toasts' `claims`, combined in `MinobotApp`; every
+other toast — an attack — it still takes.

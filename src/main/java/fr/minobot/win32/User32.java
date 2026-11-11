@@ -441,15 +441,24 @@ public final class User32 implements WindowApi {
     // ------------------------------------------------------------------ capture
 
     /**
+     * The one surface every window is painted into, kept from one capture to the next: the watcher
+     * captures four times a second, and a memory DC and a bitmap of a whole window made and torn down
+     * at each look were most of what a look cost. Guarded by {@link #surfaceLock} — the watcher and the
+     * capture probe may both capture.
+     */
+    private Surface surface;
+    private final Object surfaceLock = new Object();
+
+    /**
      * Has the window paint its client area into a bitmap of our own, then reads the pixels back.
      *
      * <p>The bitmap is a DIB section — memory we can read directly — laid out top-down (a negative
      * height) at 32 bits per pixel, so row 0 is the top of the window and each pixel is one
      * little-endian {@code int}: {@code 0xAARRGGBB}, whose alpha byte {@code PrintWindow} leaves
-     * undefined, hence masked off.
+     * undefined, hence masked off as it is read.
      *
-     * <p>Three GDI resources are in play — the memory DC, our bitmap, and the bitmap the DC came with,
-     * which must be selected back before ours is deleted — and every path out releases them.
+     * <p>The surface outlives the call (see {@link #surface}); the pixels handed back do not share it —
+     * each capture owns its array, read out of the bitmap in one pass.
      */
     @Override
     public Optional<Capture> capture(long hwnd) {
@@ -463,12 +472,64 @@ public final class User32 implements WindowApi {
         final var width = area.get().width();
         final var height = area.get().height();
 
-        try (final var arena = Arena.ofConfined()) {
-            final var memoryDc = (long) CreateCompatibleDC.invokeExact(Win32.NULL_HANDLE);
-            if (memoryDc == Win32.NULL_HANDLE) {
-                return Optional.empty();
-            }
+        synchronized (surfaceLock) {
             try {
+                final var target = surfaceOf(width, height);
+                if (target == null) {
+                    return Optional.empty();
+                }
+                final var painted = (int) PrintWindow.invokeExact(
+                        hwnd, target.dc(), Win32.PW_CLIENTONLY | Win32.PW_RENDERFULLCONTENT);
+                if (painted == 0) {
+                    return Optional.empty();
+                }
+                // GDI may batch its drawing: the bits are only ours to read once it has flushed.
+                final var ignored = (int) GdiFlush.invokeExact();
+                return Optional.of(new Capture(width, height, opaque(target.bits())));
+            } catch (Throwable t) {
+                throw failure("PrintWindow", t);
+            }
+        }
+    }
+
+    private static int[] opaque(MemorySegment argb) {
+        final var pixels = new int[(int) (argb.byteSize() / 4)];
+        for (var i = 0; i < pixels.length; i++) {
+            pixels[i] = argb.getAtIndex(ValueLayout.JAVA_INT, i) & 0xFFFFFF;
+        }
+        return pixels;
+    }
+
+    /** The surface at this size: the one kept if it fits, a new one in its place if the window was resized. */
+    private Surface surfaceOf(int width, int height) throws Throwable {
+        if (surface != null && surface.width() == width && surface.height() == height) {
+            return surface;
+        }
+        if (surface != null) {
+            surface.release();
+            surface = null;
+        }
+        surface = Surface.create(width, height);
+        return surface;
+    }
+
+    /**
+     * A memory DC with our DIB section selected into it, and the bits that DIB section is.
+     *
+     * <p>Three GDI resources are in play — the memory DC, our bitmap, and the bitmap the DC came with,
+     * which must be selected back before ours is deleted — and {@link #release} gives back all three.
+     * A surface is never released otherwise: it lives as long as the application, which is one bitmap
+     * the size of a game window.
+     */
+    private record Surface(long dc, long bitmap, long original, MemorySegment bits, int width, int height) {
+
+        /** {@code null} if GDI refused: the capture is then simply not taken, as with any failed call. */
+        static Surface create(int width, int height) throws Throwable {
+            final var dc = (long) CreateCompatibleDC.invokeExact(Win32.NULL_HANDLE);
+            if (dc == Win32.NULL_HANDLE) {
+                return null;
+            }
+            try (final var arena = Arena.ofConfined()) {
                 final var info = arena.allocate(BITMAPINFO);
                 info.set(ValueLayout.JAVA_INT, 0, BITMAPINFOHEADER_SIZE);
                 info.set(ValueLayout.JAVA_INT, 4, width);
@@ -479,42 +540,23 @@ public final class User32 implements WindowApi {
 
                 final var bitsPointer = arena.allocate(ValueLayout.ADDRESS);
                 final var bitmap = (long) CreateDIBSection.invokeExact(
-                        memoryDc, info, Win32.DIB_RGB_COLORS, bitsPointer, Win32.NULL_HANDLE, 0);
+                        dc, info, Win32.DIB_RGB_COLORS, bitsPointer, Win32.NULL_HANDLE, 0);
                 if (bitmap == Win32.NULL_HANDLE) {
-                    return Optional.empty();
+                    final var ignored = (int) DeleteDC.invokeExact(dc);
+                    return null;
                 }
-                try {
-                    final var original = (long) SelectObject.invokeExact(memoryDc, bitmap);
-                    try {
-                        final var painted = (int) PrintWindow.invokeExact(
-                                hwnd, memoryDc, Win32.PW_CLIENTONLY | Win32.PW_RENDERFULLCONTENT);
-                        if (painted == 0) {
-                            return Optional.empty();
-                        }
-                        // GDI may batch its drawing: the bits are only ours to read once it has flushed.
-                        final var ignored = (int) GdiFlush.invokeExact();
-                        final var bits = bitsPointer.get(ValueLayout.ADDRESS, 0)
-                                .reinterpret((long) width * height * 4);
-                        return Optional.of(new Capture(width, height, opaque(bits.toArray(ValueLayout.JAVA_INT))));
-                    } finally {
-                        final var ignored = (long) SelectObject.invokeExact(memoryDc, original);
-                    }
-                } finally {
-                    final var ignored = (int) DeleteObject.invokeExact(bitmap);
-                }
-            } finally {
-                final var ignored = (int) DeleteDC.invokeExact(memoryDc);
+                final var original = (long) SelectObject.invokeExact(dc, bitmap);
+                // The bits belong to the bitmap, not to this arena: they stay valid until DeleteObject.
+                final var bits = bitsPointer.get(ValueLayout.ADDRESS, 0).reinterpret((long) width * height * 4);
+                return new Surface(dc, bitmap, original, bits, width, height);
             }
-        } catch (Throwable t) {
-            throw failure("PrintWindow", t);
         }
-    }
 
-    private static int[] opaque(int[] argb) {
-        for (var i = 0; i < argb.length; i++) {
-            argb[i] &= 0xFFFFFF;
+        void release() throws Throwable {
+            final var deselected = (long) SelectObject.invokeExact(dc, original);
+            final var deleted = (int) DeleteObject.invokeExact(bitmap);
+            final var ignored = (int) DeleteDC.invokeExact(dc);
         }
-        return argb;
     }
 
     @Override
