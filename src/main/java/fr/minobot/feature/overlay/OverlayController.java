@@ -122,6 +122,11 @@ public final class OverlayController implements OverlayActions {
         this.view = viewFactory.apply(this);
     }
 
+    /** Whether the panel is up — over the whole of a game, where nothing else should be drawn. */
+    public boolean isShowing() {
+        return view.isVisible();
+    }
+
     /** Shows the panel over the character the player is on, or takes it away if it is already up. */
     public void toggle() {
         if (view.isVisible()) {
@@ -320,6 +325,20 @@ public final class OverlayController implements OverlayActions {
         redraw();
     }
 
+    @Override
+    public void toggleEconome(boolean on) {
+        log.info("Économe marks switched {}.", on ? "on" : "off");
+        settings.update(config -> config.withEconome(on));
+        redraw();
+    }
+
+    @Override
+    public void toggleSpellSetup(boolean on) {
+        log.info("Spell setup switched {}.", on ? "on" : "off");
+        settings.update(config -> config.withSpellSetup(on));
+        redraw();
+    }
+
     /**
      * Takes the player to the character a whisper was sent to.
      *
@@ -419,6 +438,7 @@ public final class OverlayController implements OverlayActions {
 
         return new OverlayContent(entries, hotkeys, config.overlayScale(),
                 config.autoPassTurn(), config.autoAcceptTrade(),
+                config.econome(), config.spellSetup(),
                 activity.recent(), whispers.recent());
     }
 

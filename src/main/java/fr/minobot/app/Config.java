@@ -68,7 +68,21 @@ public record Config(
          * The same kind of switch as {@link #autoPassTurn}: no hotkey, flipped on the overlay, and not
          * persisted — forgotten on restart.
          */
-        @JsonProperty("auto_accept_trade") boolean autoAcceptTrade
+        @JsonProperty("auto_accept_trade") boolean autoAcceptTrade,
+
+        /**
+         * Whether the spells each character cast this fight are crossed out on their spell bar — the help
+         * for the <em>Économe</em> challenge, which forbids casting one twice. A switch like
+         * {@link #autoPassTurn}, flipped on the overlay and forgotten on restart: it is for the fights
+         * the player takes the challenge in.
+         */
+        @JsonProperty("econome") boolean econome,
+
+        /**
+         * Whether the slots of the spell bar are framed, known or not, so the player can teach Minobot
+         * which spell each one holds. A switch like {@link #econome}, for the fight it takes to learn them.
+         */
+        @JsonProperty("spell_setup") boolean spellSetup
 ) {
 
     /**
@@ -106,7 +120,10 @@ public record Config(
                 false,
                 // On by default: passing items between one's own accounts is the bread and butter of
                 // multi-boxing, and it only ever fires on a trade the player's own character asked for.
-                true
+                true,
+                // Off: a challenge is taken fight by fight.
+                false,
+                false
         );
     }
 
@@ -144,7 +161,9 @@ public record Config(
                 hotkeyOf(Feature.AUTO_PASS_TURN, feature, combination),
                 overlayScale,
                 autoPassTurn,
-                autoAcceptTrade);
+                autoAcceptTrade,
+                econome,
+                spellSetup);
     }
 
     /** The new combination for the feature being rebound, the current one for every other. */
@@ -181,7 +200,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, excluded, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, spellSetup);
     }
 
     /** The same configuration with the panel drawn bigger or smaller — how its slider lands. */
@@ -189,7 +208,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, scale, autoPassTurn, autoAcceptTrade);
+                overlayHotkey, autoPassTurnHotkey, scale, autoPassTurn, autoAcceptTrade, econome, spellSetup);
     }
 
     /** The same configuration with the turn-passer switched on or off — how the overlay's toggle lands. */
@@ -197,7 +216,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, enabled, autoAcceptTrade);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, enabled, autoAcceptTrade, econome, spellSetup);
     }
 
     /** The same configuration with the trade-accepter switched on or off — the overlay's other toggle. */
@@ -205,7 +224,23 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, enabled);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, enabled, econome, spellSetup);
+    }
+
+    /** The same configuration with the spell marks switched on or off — the overlay's Économe switch. */
+    public Config withEconome(boolean enabled) {
+        return new Config(
+                logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
+                characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, enabled, spellSetup);
+    }
+
+    /** The same configuration with the spell bar's setup switched on or off. */
+    public Config withSpellSetup(boolean enabled) {
+        return new Config(
+                logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
+                characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, enabled);
     }
 
     /**
@@ -257,7 +292,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, spellSetup);
     }
 
     private static <T> List<T> copyOrEmpty(List<T> value) {

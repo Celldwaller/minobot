@@ -3,7 +3,10 @@ package fr.minobot.tools;
 import fr.minobot.app.Config;
 import fr.minobot.app.Settings;
 import fr.minobot.core.WindowManager;
+import fr.minobot.core.domain.Cast;
+import fr.minobot.core.vision.ChatLog;
 import fr.minobot.core.vision.RequestDialog;
+import fr.minobot.core.vision.SpellBar;
 import fr.minobot.core.vision.TurnBanner;
 import fr.minobot.win32.Capture;
 import fr.minobot.win32.User32;
@@ -16,12 +19,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * A developer's probe, not a feature: captures every game window to PNG files, so what Minobot can
  * see of a background character — and where on it a given piece of the game's interface sits — can
- * be looked at before any feature is built on it. Each shot is also read by {@link TurnBanner} and
- * {@link RequestDialog}.
+ * be looked at before any feature is built on it. Each shot is also read by {@link TurnBanner},
+ * {@link RequestDialog}, {@link ChatLog} — the casts in its last lines — and {@link SpellBar}.
  *
  * <pre>
  * java --enable-native-access=ALL-UNNAMED -cp target/minobot.jar fr.minobot.tools.CaptureProbe [shots] [intervalMs]
@@ -38,7 +42,7 @@ public final class CaptureProbe {
 
     static void main(String[] args) throws IOException, InterruptedException {
         final var ocr = WindowsOcr.start().orElseThrow(() -> new IllegalStateException("No Windows OCR language for this user."));
-        final var vision = new Vision(new TurnBanner(ocr), new RequestDialog(ocr));
+        final var vision = new Vision(new TurnBanner(ocr), new RequestDialog(ocr), new ChatLog(ocr));
         if (args.length == 2 && args[0].equals("--read")) {
             reread(vision, Path.of(args[1]));
             return;
@@ -89,11 +93,20 @@ public final class CaptureProbe {
     }
 
     /** Everything Minobot reads off a game window, said in one line. */
-    private record Vision(TurnBanner banner, RequestDialog dialog) {
+    private record Vision(TurnBanner banner, RequestDialog dialog, ChatLog chat) {
 
         String describe(Capture capture) {
             return banner.fighter(capture).map(name -> "banner: " + name).orElse("no banner")
-                    + dialog.request(capture).map(request -> ", request: " + request).orElse("");
+                    + dialog.request(capture).map(request -> ", request: " + request).orElse("")
+                    + (SpellBar.isUp(capture) ? ", spell bar" : ", no spell bar")
+                    + chat.lines(capture).map(Vision::casts).orElse(", no chat");
+        }
+
+        private static String casts(List<String> lines) {
+            final var casts = lines.stream().flatMap(line -> Cast.in(line).stream())
+                    .map(cast -> cast.fighter() + (cast.weapon() ? " swings " : " casts ") + cast.action())
+                    .toList();
+            return casts.isEmpty() ? ", no cast in chat" : ", chat: " + String.join(" / ", casts);
         }
     }
 
