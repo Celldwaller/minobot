@@ -53,6 +53,7 @@ Pour quitter : clic droit sur l'icône à côté de l'horloge → **Quitter**.
   « Pick a class » (ou double-cliquez la ligne) pour choisir classe et sexe. Un personnage configuré reste
   dans la liste même déconnecté ; la petite croix le retire.
 - **Les interrupteurs** Auto-pass turns et Auto-accept trades.
+- **L'encadré Easyconome** : **Easyconome**, **Setup** et **Reset** (voir ci-dessous).
 - **ACTIVITY** et **WHISPERS** : ce que Minobot vient de faire, et les messages privés reçus.
 - **Keybinds ›** : cliquez sur une touche puis appuyez sur la nouvelle. Les lettres et chiffres sont
   refusés (ce sont les touches du chat).
@@ -60,6 +61,27 @@ Pour quitter : clic droit sur l'icône à côté de l'horloge → **Quitter**.
 
 L'ordre, les classes et les touches sont retenus ; la taille et les interrupteurs repartent de zéro au
 redémarrage.
+
+## Easyconome (challenge Économe)
+
+Minobot lit le journal de combat dans le chat et **barre, sur la barre de sorts, chaque sort que le
+personnage à l'écran a déjà lancé** dans ce combat, arme comprise.
+
+1. Dans l'overlay, activez **Setup**. Sur chaque personnage, **cliquez un sort de la barre, puis
+   lancez-le** dans les 10 secondes : la case passe au vert, et son nom s'affiche au survol.
+2. Coupez **Setup** et activez **Easyconome**.
+
+Les cases apprises valent pour **toute la classe** et sont retenues dans `spell-layouts.json`. Si un
+personnage range ses sorts autrement que les autres de sa classe, le bouton **Own layout**, affiché
+pendant le réglage, lui donne une disposition à lui (il faut lui avoir choisi une classe).
+
+- Un **échec critique** ne compte pas : le sort peut être relancé.
+- Un sort relancé est signalé dans ACTIVITY : « Easyconome: challenge lost ».
+- Les croix s'effacent d'elles-mêmes au combat suivant ; **Reset** les efface à la main si deux combats
+  s'enchaînent à moins d'une minute d'écart.
+- Le chat est lu dans la fenêtre du **premier personnage de votre ordre** : il doit être dans le combat,
+  avec les messages de combat affichés dans son chat.
+- L'affichage 16:9 du jeu est reconnu, fenêtre par fenêtre.
 
 ## Réglages avancés (`config.json`)
 

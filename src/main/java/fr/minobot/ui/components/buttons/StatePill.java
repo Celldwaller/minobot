@@ -12,6 +12,7 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -50,11 +51,25 @@ public final class StatePill {
         state.setForeground(on ? Theme.ACCENT_HOVER : Theme.DIM);
         state.setFont(scale.tracked(scale.font(Fonts.CONDENSED, Metrics.HEADING), Metrics.BADGE_TRACKING));
         state.setBorder(new EmptyBorder(0, scale.px(Metrics.GAP - 1), 0, 0));
+        holdWidest(state);
 
         final var pill = new Pill(scale, on, onToggle);
         pill.add(name, BorderLayout.WEST);
         pill.add(state, BorderLayout.EAST);
         return pill;
+    }
+
+    /**
+     * Sizes the state for the wider of its two words, so a flip does not resize the pill and push
+     * everything beside it along the row.
+     */
+    private static void holdWidest(JLabel state) {
+        final var metrics = state.getFontMetrics(state.getFont());
+        final var insets = state.getInsets();
+        final var natural = state.getPreferredSize();
+        state.setPreferredSize(new Dimension(
+                Math.max(metrics.stringWidth(ON), metrics.stringWidth(OFF)) + insets.left + insets.right,
+                natural.height));
     }
 
     /** The surface under the two labels: washed in the ember when on, a quiet raised tile when off. */

@@ -19,6 +19,9 @@ import java.awt.Component;
  * The right half of the panel: what the player has <em>set</em>, and what those settings have been
  * <em>doing</em>, separated by one rule.
  *
+ * <p>Under the rule, a grid: the Easyconome box over the activity on the left, the whispers down the whole
+ * right. Every cell has a fixed size — a switch flipped or a line logged never moves another.
+ *
  * <p>The two belong on one card and not on two. A switch and the line proving it fired are the same
  * question asked twice — <em>is auto-pass on?</em> and <em>did it just pass a turn?</em> — and a player
  * who flips a switch looks straight down for the answer. Two cards would put a gutter between the
@@ -42,11 +45,13 @@ public final class ConsoleCard {
     }
 
     private final Switches switches;
+    private final EconomeBox econome;
     private final ActivityList activity = new ActivityList();
     private final WhisperList whispers;
 
     public ConsoleCard(OverlayActions actions) {
         this.switches = new Switches(actions);
+        this.econome = new EconomeBox(actions);
         this.whispers = new WhisperList(actions);
     }
 
@@ -65,18 +70,27 @@ public final class ConsoleCard {
         return card;
     }
 
-    /** The two records, side by side: what was done, and what was said to the player while it was. */
+    /**
+     * The Easyconome box over what was done, and down the right what was said to the player while it was
+     * — as tall as the two on the left.
+     */
     private JComponent record(Scale scale, OverlayContent content) {
+        final var width = scale.px(ActivityList.WIDTH);
+        final var left = Card.plainColumn().pinnedTo(width);
+        left.add(econome.build(scale, content, width));
+        left.add(Box.createVerticalStrut(scale.px(Metrics.GUTTER)));
+        left.add(activity.build(scale, content.activity()));
+
         final var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
         row.setOpaque(false);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        row.add(activity.build(scale, content.activity()));
+        row.add(left);
         row.add(Box.createHorizontalStrut(scale.px(Metrics.GUTTER)));
         row.add(Divider.vertical(scale));
         row.add(Box.createHorizontalStrut(scale.px(Metrics.GUTTER)));
-        row.add(whispers.build(scale, content.whispers()));
+        row.add(whispers.build(scale, content.whispers(), left.getPreferredSize().height));
         return row;
     }
 }

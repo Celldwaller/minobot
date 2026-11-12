@@ -145,7 +145,7 @@ public final class MinobotApp {
         this.groupManager = new GroupManager(
                 windowManager, inputSimulator, focusManager, requests, activityLog);
         this.overlay = new OverlayController(api, windowManager, settings, keyboardMonitor, focusManager,
-                activityLog, whisperLog, SwingOverlay::new);
+                activityLog, whisperLog, spellUsage, SwingOverlay::new);
 
         // Crosses out the spells each character cast this fight, for the Économe challenge, and learns
         // which slot holds which spell while the player sets the bar up. Both are switches on the panel.

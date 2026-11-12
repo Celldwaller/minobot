@@ -5,6 +5,7 @@ import fr.minobot.app.Settings;
 import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.KeyboardMonitor;
+import fr.minobot.core.SpellUsage;
 import fr.minobot.core.WhisperLog;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.Character;
@@ -94,6 +95,7 @@ public final class OverlayController implements OverlayActions {
     private final FocusManager focus;
     private final ActivityLog activity;
     private final WhisperLog whispers;
+    private final SpellUsage spells;
     private final OverlayView view;
 
     /** Where the panel last was, so an edit can redraw it without asking Windows again. */
@@ -110,7 +112,7 @@ public final class OverlayController implements OverlayActions {
      */
     public OverlayController(WindowApi api, WindowManager windows, Settings settings,
                              KeyboardMonitor keyboard, FocusManager focus,
-                             ActivityLog activity, WhisperLog whispers,
+                             ActivityLog activity, WhisperLog whispers, SpellUsage spells,
                              Function<OverlayActions, OverlayView> viewFactory) {
         this.api = api;
         this.windows = windows;
@@ -119,6 +121,7 @@ public final class OverlayController implements OverlayActions {
         this.focus = focus;
         this.activity = activity;
         this.whispers = whispers;
+        this.spells = spells;
         this.view = viewFactory.apply(this);
     }
 
@@ -336,6 +339,14 @@ public final class OverlayController implements OverlayActions {
     public void toggleSpellSetup(boolean on) {
         log.info("Spell setup switched {}.", on ? "on" : "off");
         settings.update(config -> config.withSpellSetup(on));
+        redraw();
+    }
+
+    @Override
+    public void resetEconome() {
+        log.info("Easyconome reset: the spells cast this fight are forgotten.");
+        spells.clear();
+        activity.record("Easyconome reset", "nothing cast yet");
         redraw();
     }
 

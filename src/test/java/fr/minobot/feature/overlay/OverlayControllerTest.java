@@ -5,8 +5,11 @@ import fr.minobot.app.Feature;
 import fr.minobot.app.Settings;
 import fr.minobot.app.TestConfigs;
 import fr.minobot.core.ActivityLog;
+import fr.minobot.core.FightLog;
+import fr.minobot.core.FightTurns;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.KeyboardMonitor;
+import fr.minobot.core.SpellUsage;
 import fr.minobot.core.WhisperLog;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.Activity;
@@ -43,6 +46,8 @@ class OverlayControllerTest {
     private final Settings settings = TestConfigs.settings(Map.of());
     private final ActivityLog activity = new ActivityLog();
     private final WhisperLog whispers = new WhisperLog();
+    private final FightLog fightLog = new FightLog();
+    private final SpellUsage spells = new SpellUsage(fightLog, new FightTurns());
 
     private OverlayController controller() {
         return controller(new WindowManager(api, settings, activity));
@@ -51,7 +56,7 @@ class OverlayControllerTest {
     private OverlayController controller(WindowManager windows) {
         return new OverlayController(api, windows, settings, new KeyboardMonitor(api),
                 new FocusManager(api, new FakeInput(api::foregroundWindow)),
-                activity, whispers, _ -> view);
+                activity, whispers, spells, _ -> view);
     }
 
     /** The names the panel was last handed to draw, in the order it drew them. */
@@ -729,6 +734,24 @@ class OverlayControllerTest {
             controller.clearWhispers();
 
             assertThat(view.content().orElseThrow().whispers()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("resetting the Easyconome forgets what was cast, and says so")
+        void resetsTheEconome() {
+            api.withForeground(1);
+            fightLog.report(List.of("before"));
+            fightLog.report(List.of("Alpha lance Flèche."));
+            final var controller = controller();
+            controller.toggle();
+            assertThat(spells.of("Alpha")).isNotEmpty();
+
+            controller.resetEconome();
+
+            assertThat(spells.of("Alpha")).isEmpty();
+            assertThat(view.content().orElseThrow().activity())
+                    .extracting(Activity::what)
+                    .first().isEqualTo("Easyconome reset");
         }
 
         @Test
