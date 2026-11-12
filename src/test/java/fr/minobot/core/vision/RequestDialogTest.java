@@ -107,6 +107,16 @@ class RequestDialogTest {
     }
 
     @Test
+    @DisplayName("no box is said only of a frame read without its title bar")
+    void saysNoBoxOnlyWhenSure() {
+        final var dialog = new RequestDialog(new FakeTextReader().failing());
+
+        assertThat(dialog.noBox(blank(2560, 1369))).isTrue();
+        assertThat(dialog.noBox(requestBox())).as("a box, even unreadable").isFalse();
+        assertThat(dialog.noBox(RecordingFrame.unreadable(blank(2560, 1369)))).as("a frame not had").isFalse();
+    }
+
+    @Test
     void readsNothingWhenTheOcrFails() {
         assertThat(new RequestDialog(new FakeTextReader().failing()).request(requestBox())).isEmpty();
     }

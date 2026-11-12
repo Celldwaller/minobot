@@ -31,6 +31,11 @@ final class Sightings<K, V> {
         return previous == null || !previous.value().equals(value) || now - previous.nanos() >= window.toNanos();
     }
 
+    /** Nothing is shown on {@code subject} any more: whatever is seen there next is new. */
+    synchronized void forget(K subject) {
+        last.remove(subject);
+    }
+
     private record Seen<V>(V value, long nanos) {
     }
 }

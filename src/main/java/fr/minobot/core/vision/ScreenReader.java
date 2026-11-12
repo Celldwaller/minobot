@@ -17,9 +17,17 @@ public interface ScreenReader {
         return (_, frame, seenAt) -> banner.fighter(frame).ifPresent(fighter -> turns.report(fighter, seenAt));
     }
 
-    /** The request in the box on a character's window, told as made of that character. */
+    /**
+     * The request in the box on a character's window, told as made of that character — and its absence,
+     * so the same request asked again once answered is a new one.
+     */
     static ScreenReader requests(RequestDialog dialog, Requests requests) {
-        return (window, frame, seenAt) ->
+        return (window, frame, seenAt) -> {
+            if (dialog.noBox(frame)) {
+                requests.cleared(window);
+            } else {
                 dialog.request(frame).ifPresent(request -> requests.report(window, request, seenAt));
+            }
+        };
     }
 }

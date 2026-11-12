@@ -76,6 +76,29 @@ class RequestsTest {
     }
 
     @Test
+    @DisplayName("asked again right after the first was answered, it is asked again")
+    void anAnsweredRequestEndsTheRequest() {
+        requests.report(BRAVO, TRADE);
+        elapse(500);
+        requests.cleared(BRAVO);
+        elapse(500);
+        requests.report(BRAVO, TRADE);
+
+        assertThat(heard).containsExactly("Bravo TRADE", "Bravo TRADE");
+    }
+
+    @Test
+    @DisplayName("a request answered on one character leaves the others' standing")
+    void clearsOnlyItsCharacter() {
+        requests.report(ALPHA, TRADE);
+        requests.report(BRAVO, TRADE);
+        requests.cleared(ALPHA);
+        requests.report(BRAVO, TRADE);
+
+        assertThat(heard).containsExactly("Alpha TRADE", "Bravo TRADE");
+    }
+
+    @Test
     @DisplayName("a request awaited on a window is awaited there until it is seen")
     void awaitsARequestUntilItIsSeen() {
         assertThat(requests.awaited()).isEqualTo(Win32.NULL_HANDLE);
