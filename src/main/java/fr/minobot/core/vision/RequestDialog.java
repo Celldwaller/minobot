@@ -60,7 +60,7 @@ public final class RequestDialog {
      */
     public Optional<Request> request(Frame frame) {
         final var stage = GameStage.of(frame);
-        return Region.of(frame, stage.x(TITLE_LEFT), stage.y(TITLE_ROW), stage.x(TITLE_RIGHT) + 1, stage.y(TITLE_ROW) + 1)
+        return titleRow(frame, stage)
                 .filter(title -> all(title, stage, TITLE_POINTS, TITLE_BAR))
                 .flatMap(_ -> Region.of(frame,
                         stage.x(BODY_LEFT), stage.y(BODY_TOP), stage.x(BODY_RIGHT) + 1, stage.y(BODY_BOTTOM) + 1))
@@ -69,6 +69,20 @@ public final class RequestDialog {
                         stage.x(QUESTION_RIGHT), stage.y(QUESTION_BOTTOM)))
                 .flatMap(question -> reader.read(question.padded(MARGIN, BODY_BEIGE)))
                 .flatMap(Request::in);
+    }
+
+    /**
+     * Whether the frame surely shows no box: its title row was read, and no title bar is on it. A frame
+     * that cannot be read, or a box whose question cannot, says nothing — taken for "no box", a box still
+     * up would be asked again at its next sighting.
+     */
+    public boolean noBox(Frame frame) {
+        final var stage = GameStage.of(frame);
+        return titleRow(frame, stage).filter(title -> !all(title, stage, TITLE_POINTS, TITLE_BAR)).isPresent();
+    }
+
+    private static Optional<Region> titleRow(Frame frame, GameStage stage) {
+        return Region.of(frame, stage.x(TITLE_LEFT), stage.y(TITLE_ROW), stage.x(TITLE_RIGHT) + 1, stage.y(TITLE_ROW) + 1);
     }
 
     private static boolean all(Region region, GameStage stage, double[][] points, int rgb) {

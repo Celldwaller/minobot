@@ -99,6 +99,15 @@ public final class Requests {
         }
     }
 
+    /**
+     * A source saw no request waiting on {@code receiver}: the last one was answered. Without this, the
+     * same trade asked again right after the first was accepted — within {@link #SAME_REQUEST} of its last
+     * sighting — would be taken for the first, still standing, and never answered.
+     */
+    public void cleared(GameWindow receiver) {
+        sightings.forget(receiver.hwnd());
+    }
+
     /** The delay is logged as in {@link FightTurns}: from the sighting to the listener's return. */
     private void tell(BiConsumer<GameWindow, Request> listener, GameWindow receiver, Request request, long seenAt) {
         try {
