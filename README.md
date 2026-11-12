@@ -81,7 +81,8 @@ pendant le réglage, lui donne une disposition à lui (il faut lui avoir choisi 
   main si cette ligne n'a pas été lue.
 - Le chat est lu dans la fenêtre du **premier personnage de votre ordre** : il doit être dans le combat,
   avec les messages de combat affichés dans son chat.
-- L'affichage 16:9 du jeu est reconnu, fenêtre par fenêtre.
+- L'affichage 16:9 du jeu est reconnu, fenêtre par fenêtre : chat à gauche ou à droite, clair ou sombre,
+  sorts en grille ou en colonne.
 
 ## Réglages avancés (`config.json`)
 

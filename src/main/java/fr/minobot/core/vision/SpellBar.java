@@ -11,10 +11,10 @@ import java.util.OptionalInt;
  *
  * <p>The slots are numbered once for all: {@value #WEAPON} is the weapon's, left of the main bar; 1 to 7
  * the main bar's top row and 8 to 14 its bottom row, left to right. From 15 come the extra slots, which
- * the {@link Hud} lays out its own way: the classic one as a column of eight at the left edge of the game,
- * top to bottom (15 to 22); the 16:9 one as a grid of sixteen under the map, row by row (15 to 30) — its
- * first two rows the same eight spells as the column, in the same order, so a layout learned in one holds
- * in the other. They are where the game draws them, whatever is in them — a player's bar is theirs to fill,
+ * the {@link Hud} lays out its own way: as a column of eight at the left edge of the game, top to bottom
+ * (15 to 22), or in the 16:9 display as a grid of sixteen under the map, row by row (15 to 30) — its first
+ * two rows the same eight spells as the column, in the same order, so a layout learned in one holds in the
+ * other. The 16:9 display may keep the column, a pixel or two off the classic one. They are where the game draws them, whatever is in them — a player's bar is theirs to fill,
  * not ours to read.
  *
  * <p>The bar is not always there to be marked. Hovering a fighter replaces it with that fighter's sheet,
@@ -49,6 +49,10 @@ public final class SpellBar {
     /** The 16:9 ones: the same bar a little lower, and the grid of four by four under the map. */
     private static final Bar WIDE = new Bar(486.55, 486.96, 28.84,
             new Extra(246.72, 451.22, 4, 4, 26.128, 24.27));
+
+    /** The 16:9 bar with the column kept. */
+    private static final Bar WIDE_COLUMN = new Bar(WIDE.weaponTop(), WIDE.mainTop(), WIDE.mainPitchY(),
+            new Extra(2.5, 193.3, 1, 8, 28.02, SIDE));
 
     /** The bar's background, between its slots — where a fighter's sheet shows its own beige. */
     private static final int BACKGROUND = 0xB8B18F;
@@ -142,7 +146,10 @@ public final class SpellBar {
     }
 
     private static Bar bar(Hud hud) {
-        return hud == Hud.WIDE ? WIDE : CLASSIC;
+        if (!hud.isWide()) {
+            return CLASSIC;
+        }
+        return hud.grid() ? WIDE : WIDE_COLUMN;
     }
 
     /** A layout's top edges for the weapon and the main bar, its rows' pitch, and its extra slots. */

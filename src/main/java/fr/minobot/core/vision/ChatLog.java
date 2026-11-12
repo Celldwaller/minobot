@@ -22,8 +22,10 @@ import java.util.Optional;
  * comparison of pixels and no OCR at all, and a look with one new line costs one line's OCR (3 to 12 ms,
  * measured).
  *
- * <p>The box is checked before it is read: the beige band under its last line must be there, which it is
- * not while the chat is folded away or something covers it.
+ * <p>The box is checked before it is read: the band under its last line must be of the chat's background,
+ * which it is not while the chat is folded away or something covers it. The background is beige, or near
+ * black in the 16:9 display's dark chat — the player's choice, window by window; the lines sit in the same
+ * place in either.
  *
  * <p>The chat is where the window's {@link Hud} puts it. Positions are the stage's (see {@link GameStage}),
  * measured on a 2560x1369 window. It remembers the lines it read, so each window's chat is read by a reader
@@ -31,8 +33,9 @@ import java.util.Optional;
  */
 public final class ChatLog {
 
-    /** The chat's background. */
+    /** The chat's backgrounds: the light one, and the dark one the 16:9 display offers. */
     private static final int BEIGE = 0xD5CFAA;
+    private static final int DARK = 0x14120D;
 
     /**
      * The classic chat, under the map: six lines at its smallest. Its right edge is the longest line the
@@ -46,6 +49,9 @@ public final class ChatLog {
      * each. Its right edge is left of its scroll bar.
      */
     static final Pane WIDE = new Pane(-147.2, -10.8, 217.69, 7.7166, 219.3, 10);
+
+    /** The same pane when the player puts the column right of the stage: the whole column moves across. */
+    static final Pane WIDE_RIGHT = WIDE.across(893.1);
 
     /** The OCR finds nothing in text that touches its image's edge. */
     private static final int MARGIN = 20;
@@ -72,23 +78,26 @@ public final class ChatLog {
      * to read, or the OCR failed on a line — a list with a hole in it would say a line was new that was not.
      */
     public Optional<List<String>> lines(Frame frame) {
-        final var pane = Hud.of(frame) == Hud.WIDE ? WIDE : CLASSIC;
+        final var pane = switch (Hud.of(frame).chat()) {
+            case UNDER_MAP -> CLASSIC;
+            case LEFT -> WIDE;
+            case RIGHT -> WIDE_RIGHT;
+        };
         final var stage = GameStage.of(frame);
         final var left = stage.x(pane.left());
-        if (left < 0) {
+        if (left < 0 || stage.x(pane.right()) > frame.width()) {
             return Optional.empty();
         }
         return Region.of(frame, left, stage.y(pane.top()), stage.x(pane.right()), stage.y(pane.checkRow()) + 1)
-                .filter(box -> pane.isUp(box, stage))
-                .flatMap(box -> read(box, stage, pane));
+                .flatMap(box -> pane.background(box, stage).flatMap(background -> read(box, stage, pane, background)));
     }
 
-    private Optional<List<String>> read(Region box, GameStage stage, Pane pane) {
+    private Optional<List<String>> read(Region box, GameStage stage, Pane pane, int background) {
         final var lines = new ArrayList<String>(pane.lines());
         for (var index = pane.lines() - 1; index >= 0; index--) {
             final var pixels = box.crop(stage.x(pane.left()), stage.y(pane.bottom() - (index + 1) * pane.pitch()),
                     stage.x(pane.right()), stage.y(pane.bottom() - index * pane.pitch()));
-            final var text = text(pixels);
+            final var text = text(pixels, background);
             if (text.isEmpty()) {
                 return Optional.empty();
             }
@@ -97,35 +106,49 @@ public final class ChatLog {
         return Optional.of(lines);
     }
 
-    private Optional<String> text(Capture pixels) {
+    private Optional<String> text(Capture pixels, int background) {
         final var line = new Line(pixels);
         final var known = read.get(line);
         if (known != null) {
             return Optional.of(known);
         }
-        if (line.isBlank()) {
+        if (line.isBlank(background)) {
             return Optional.of("");
         }
-        final var text = reader.read(pixels.padded(MARGIN, BEIGE)).map(String::strip);
+        final var text = reader.read(pixels.padded(MARGIN, background)).map(String::strip);
         text.ifPresent(it -> read.put(line, it));
         return text;
     }
 
     /**
      * Where a chat's lines are, in stage coordinates: left of the text and right of it, under the last line
-     * and from one line to the next, a row of the beige under the last line — checked at both ends and in
+     * and from one line to the next, a row of background under the last line — checked at both ends and in
      * the middle — and how many lines are read.
      */
     record Pane(double left, double right, double bottom, double pitch, double checkRow, int lines) {
+
+        Pane across(double distance) {
+            return new Pane(left + distance, right + distance, bottom, pitch, checkRow, lines);
+        }
 
         double top() {
             return bottom - lines * pitch;
         }
 
-        boolean isUp(Region box, GameStage stage) {
+        /** The chat's background, when the pane is up. */
+        Optional<Integer> background(Region box, GameStage stage) {
             final var y = stage.y(checkRow);
+            for (final var background : new int[]{BEIGE, DARK}) {
+                if (isAll(box, stage, y, background)) {
+                    return Optional.of(background);
+                }
+            }
+            return Optional.empty();
+        }
+
+        private boolean isAll(Region box, GameStage stage, int y, int background) {
             for (final var column : new double[]{left, (left + right) / 2, right - 1}) {
-                if (!box.is(stage.x(column), y, BEIGE)) {
+                if (!box.is(stage.x(column), y, background)) {
                     return false;
                 }
             }
@@ -140,9 +163,9 @@ public final class ChatLog {
             this(capture.width(), capture.pixels(), Arrays.hashCode(capture.pixels()));
         }
 
-        boolean isBlank() {
+        boolean isBlank(int background) {
             for (final var pixel : pixels) {
-                if (pixel != BEIGE) {
+                if (pixel != background) {
                     return false;
                 }
             }
