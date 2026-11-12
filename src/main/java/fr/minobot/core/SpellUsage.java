@@ -16,13 +16,13 @@ import java.util.function.Consumer;
  * What every fighter has cast in the fight going on — the spells and the weapon, once each — which is
  * what the <em>Économe</em> challenge forbids casting again.
  *
- * <p>Heard from {@link FightLog}, forgotten when {@link FightTurns} says a new fight begins. A cast is
+ * <p>Heard from {@link FightLog}, and forgotten when it reads the fight's end. A cast is
  * counted as soon as it is read, so its slot is crossed out at once, and taken back if the next line says
  * it failed critically: a failed spell may be cast again. A spell cast again is only told once the log has
  * said it did not fail.
  *
- * <p>A fight's end is never seen, so what was cast stays known until the next one begins: whoever shows it
- * asks whether a fight goes on.
+ * <p>Whoever shows it still asks whether a fight goes on: an end the chat was not read for — its window
+ * not in the fight, the fight messages hidden — leaves the last fight's casts until a reset.
  */
 public final class SpellUsage {
 
@@ -37,11 +37,11 @@ public final class SpellUsage {
     private Cast unsettled;
     private boolean again;
 
-    public SpellUsage(FightLog fightLog, FightTurns turns) {
+    public SpellUsage(FightLog fightLog) {
         fightLog.onCast(this::heard);
         fightLog.onFailure(this::failed);
         fightLog.onSettled(this::settled);
-        turns.onFightStart(this::clear);
+        fightLog.onFightEnd(this::clear);
     }
 
     /**
@@ -86,10 +86,7 @@ public final class SpellUsage {
         }
     }
 
-    /**
-     * Forgets every cast — as a new fight does, or when the player says one began: two fights less than
-     * {@link FightTurns#FIGHT_GOES_ON} apart are one to the turns.
-     */
+    /** Forgets every cast — as a fight's end does, or the player when the chat missed it. */
     public synchronized void clear() {
         cast.clear();
         unsettled = null;

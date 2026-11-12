@@ -83,6 +83,20 @@ class FightLogTest {
     }
 
     @Test
+    @DisplayName("the fight's end is heard once, cut by the narrow chat or not, and is no cast")
+    void hearsTheFightsEnd() {
+        final var ends = new ArrayList<String>();
+        fightLog.onFightEnd(() -> ends.add("end"));
+        look("a", "b", "c");
+        look("c", "Alpha lance Flèche.", "Combat terminé (ouvrir l'écran de fin de", "combat).");
+        look("Combat terminé (ouvrir l'écran de fin de", "combat).", "d");
+
+        assertThat(ends).containsExactly("end");
+        assertThat(heard).containsExactly(new Cast("Alpha", "Flèche", false));
+        assertThat(settled).containsExactly(new Cast("Alpha", "Flèche", false));
+    }
+
+    @Test
     void findsWhatWasAdded() {
         assertThat(FightLog.added(List.of("a", "b", "c"), List.of("b", "c", "d"))).containsExactly("d");
         assertThat(FightLog.added(List.of("a", "b", "c"), List.of("a", "b", "c"))).isEmpty();

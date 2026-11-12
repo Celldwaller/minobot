@@ -20,7 +20,7 @@ import java.awt.FlowLayout;
  *
  * <p>Framed because the three go together and with nothing else on the card: the switches above act on
  * the game, these only draw over it. The reset is the one action of the panel that is not a switch — it
- * is there for a fight begun too soon after the last for Minobot to tell the two apart.
+ * is there for a fight's end the chat was not read for.
  */
 public final class EconomeBox {
 

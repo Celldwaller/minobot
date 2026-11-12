@@ -14,9 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SpellUsageTest {
 
     private final AtomicLong now = new AtomicLong();
-    private final FightTurns turns = new FightTurns(Runnable::run, now::get);
     private final FightLog fightLog = new FightLog(now::get);
-    private final SpellUsage usage = new SpellUsage(fightLog, turns);
+    private final SpellUsage usage = new SpellUsage(fightLog);
 
     private void cast(String line) {
         fightLog.report(List.of("before"));
@@ -50,12 +49,10 @@ class SpellUsageTest {
     }
 
     @Test
-    @DisplayName("a new fight starts with nothing cast")
-    void forgetsAtTheNextFight() {
-        turns.report("Alpha");
+    @DisplayName("the fight's end, read in the chat, forgets what was cast")
+    void forgetsAtTheFightsEnd() {
         cast("Alpha lance Flèche.");
-        now.addAndGet(FightTurns.FIGHT_GOES_ON.toNanos());
-        turns.report("Alpha");
+        fightLog.report(List.of("after", "Combat termine (ouvrir l'ecran de fin de"));
 
         assertThat(usage.of("Alpha")).isEmpty();
     }

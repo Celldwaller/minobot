@@ -52,7 +52,7 @@ class SpellMarksTest {
 
     private final FightTurns turns = new FightTurns(Runnable::run, System::nanoTime);
     private final FightLog fightLog = new FightLog();
-    private final SpellUsage usage = new SpellUsage(fightLog, turns);
+    private final SpellUsage usage = new SpellUsage(fightLog);
     private final SpellBars bars = new SpellBars();
     private final ActivityLog activity = new ActivityLog();
     private final AtomicBoolean panelUp = new AtomicBoolean();
