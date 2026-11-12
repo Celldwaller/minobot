@@ -170,6 +170,34 @@ class User32Test {
     }
 
     @Test
+    @DisplayName("the compositor's frame of a window is its client area, and a region of it comes off the GPU at its size")
+    void readsAWindowsFrame() {
+        final var hwnd = anyVisibleWindow();
+        assumeTrue(hwnd != Win32.NULL_HANDLE, "no visible titled window on this desktop");
+        final var area = api.clientArea(hwnd);
+        assumeTrue(area.isPresent(), "the window vanished mid-test");
+
+        // The first frame asked for opens the window's session; the compositor's frames follow it.
+        api.frame(hwnd);
+        final var frame = api.frame(hwnd);
+        assumeTrue(frame.isPresent(), "no frame of " + api.windowText(hwnd));
+
+        assertThat(frame.get().width()).isEqualTo(area.get().width());
+        assertThat(frame.get().height()).isEqualTo(area.get().height());
+        // A wrong D3D11 slot would come back the wrong size, or crash in CopySubresourceRegion or Map.
+        assertThat(frame.get().region(0, 0, Math.min(40, area.get().width()), Math.min(30, area.get().height())))
+                .hasValueSatisfying(region -> {
+                    assertThat(region.width()).isEqualTo(Math.min(40, area.get().width()));
+                    assertThat(region.height()).isEqualTo(Math.min(30, area.get().height()));
+                });
+    }
+
+    @Test
+    void readsNoFrameOfADeadHandle() {
+        assertThat(api.frame(Win32.NULL_HANDLE)).isEmpty();
+    }
+
+    @Test
     @DisplayName("WindowFromPoint takes its POINT by value — 8 bytes in a register on Win64")
     void findsTheWindowUnderTheCursor() {
         final var cursor = api.cursorPosition();

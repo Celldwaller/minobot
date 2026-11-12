@@ -26,6 +26,37 @@ class RequestDialogTest {
     }
 
     @Test
+    @DisplayName("with no box up, one row of a frame is read: a region is a copy off the GPU")
+    void readsARowOffAFrameWithNoBox() {
+        final var frame = RecordingFrame.of(blank(2560, 1369));
+
+        assertThat(new RequestDialog(new FakeTextReader().reading("anything")).request(frame)).isEmpty();
+        assertThat(frame.regions).singleElement().satisfies(row -> assertThat(row.height()).isEqualTo(1));
+    }
+
+    @Test
+    @DisplayName("with a box up, its title row, then its body, and nothing else of the frame are read")
+    void readsTheBoxOffAFrame() {
+        final var frame = RecordingFrame.of(requestBox());
+        final var reader = new FakeTextReader().reading("Alpha t'invite à rejoindre son groupe.\nAcceptes-tu ?");
+
+        assertThat(new RequestDialog(reader).request(frame)).isPresent();
+        assertThat(frame.regions).hasSize(2);
+        assertThat(frame.regions.getFirst().height()).as("the title row").isEqualTo(1);
+        assertThat(frame.regions.getLast().width() * frame.regions.getLast().height()).as("the body, not the window")
+                .isLessThan(frame.width() * frame.height() / 10);
+    }
+
+    @Test
+    @DisplayName("a frame whose box cannot be read asks nothing, and the OCR is not asked")
+    void readsNothingOfAnUnreadableFrame() {
+        final var reader = new FakeTextReader().reading("Alpha t'invite à rejoindre son groupe.");
+
+        assertThat(new RequestDialog(reader).request(RecordingFrame.unreadable(requestBox()))).isEmpty();
+        assertThat(reader.images()).isEmpty();
+    }
+
+    @Test
     @DisplayName("only the question goes to the OCR, in the box's beige, clear of the title and the buttons")
     void handsTheOcrTheQuestion() {
         final var reader = new FakeTextReader().reading("Alpha te propose de faire un échange.");

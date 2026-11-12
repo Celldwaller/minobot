@@ -1,6 +1,7 @@
 package fr.minobot.win32;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * What a window's client area looked like at one instant: its pixels, row by row from the top-left,
@@ -9,7 +10,7 @@ import java.util.Arrays;
  * <p>The array is the record's own and is never copied, so equality is identity: a capture is a
  * snapshot to read pixels from, not a value to compare.
  */
-public record Capture(int width, int height, int[] pixels) {
+public record Capture(int width, int height, int[] pixels) implements Frame {
 
     public Capture {
         if (width <= 0 || height <= 0 || pixels.length != width * height) {
@@ -37,6 +38,12 @@ public record Capture(int width, int height, int[] pixels) {
             System.arraycopy(pixels, y * width + left, cropped, (y - top) * (right - left), right - left);
         }
         return new Capture(right - left, bottom - top, cropped);
+    }
+
+    /** A capture is in memory: its regions are always read. */
+    @Override
+    public Optional<Capture> region(int left, int top, int right, int bottom) {
+        return Optional.of(crop(left, top, right, bottom));
     }
 
     /** The capture framed by a border of one colour, {@code margin} pixels wide on every side. */

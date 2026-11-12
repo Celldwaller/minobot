@@ -1,6 +1,6 @@
 package fr.minobot.core.vision;
 
-import fr.minobot.win32.Capture;
+import fr.minobot.win32.Frame;
 import fr.minobot.win32.TextReader;
 
 import java.util.Optional;
@@ -34,7 +34,8 @@ public final class TurnBanner {
 
     /**
      * Where the strip's beige is checked: its top row, above the letters, at both ends and in between.
-     * A long name never reaches the right end; the left end is clear of the first letter.
+     * A long name never reaches the right end; the left end is clear of the first letter. All are inside
+     * the strip, which is all of the frame that is read.
      */
     private static final double CHECK_ROW = 39.0;
     private static final double[] CHECK_COLUMNS = {151.7, 232.0, 313.4};
@@ -49,23 +50,19 @@ public final class TurnBanner {
     }
 
     /** The fighter's name on the banner — empty when there is no banner up, or nothing legible on it. */
-    public Optional<String> fighter(Capture capture) {
-        final var stage = GameStage.of(capture);
-        if (!isUp(capture, stage)) {
-            return Optional.empty();
-        }
-        final var strip = capture.crop(
-                stage.x(STRIP_LEFT), stage.y(STRIP_TOP), stage.x(STRIP_RIGHT), stage.y(STRIP_BOTTOM));
-        return reader.read(strip.padded(MARGIN, STRIP_BEIGE))
+    public Optional<String> fighter(Frame frame) {
+        final var stage = GameStage.of(frame);
+        return Region.of(frame, stage.x(STRIP_LEFT), stage.y(STRIP_TOP), stage.x(STRIP_RIGHT), stage.y(STRIP_BOTTOM))
+                .filter(strip -> isUp(strip, stage))
+                .flatMap(strip -> reader.read(strip.pixels().padded(MARGIN, STRIP_BEIGE)))
                 .map(String::strip)
                 .filter(name -> !name.isEmpty());
     }
 
-    private static boolean isUp(Capture capture, GameStage stage) {
+    private static boolean isUp(Region strip, GameStage stage) {
         final var y = stage.y(CHECK_ROW);
         for (final var column : CHECK_COLUMNS) {
-            final var x = stage.x(column);
-            if (x < 0 || x >= capture.width() || y >= capture.height() || capture.rgb(x, y) != STRIP_BEIGE) {
+            if (!strip.is(stage.x(column), y, STRIP_BEIGE)) {
                 return false;
             }
         }
