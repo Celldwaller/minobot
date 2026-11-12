@@ -73,4 +73,25 @@ class SpellLayoutsTest {
 
         assertThat(Files.readString(file())).isEqualTo("{ not json");
     }
+
+    @Test
+    @DisplayName("a character given a layout of their own starts from their class's, and may go back to it")
+    void givesALayoutOfOnesOwn() {
+        final var layouts = new SpellLayouts(file());
+        layouts.learn("Crâ", 3, "Flèche");
+
+        layouts.toggleOwn("Foxtrot", DofusClass.CRA);
+        assertThat(layouts.hasOwn("Foxtrot")).isTrue();
+        assertThat(layouts.layoutOf("Foxtrot", DofusClass.CRA)).isEqualTo("Foxtrot");
+        assertThat(layouts.spellAt("Foxtrot", 3)).contains("Flèche");
+
+        layouts.learn("Foxtrot", 5, "Flèche");
+        assertThat(layouts.slotOf("Crâ", "Flèche")).as("the class's is left alone").hasValue(3);
+
+        layouts.toggleOwn("Foxtrot", DofusClass.CRA);
+        assertThat(new SpellLayouts(file()).layoutOf("Foxtrot", DofusClass.CRA)).isEqualTo("Crâ");
+
+        layouts.toggleOwn("Foxtrot", DofusClass.CRA);
+        assertThat(layouts.slotOf("Foxtrot", "Flèche")).as("kept for the next time").hasValue(5);
+    }
 }

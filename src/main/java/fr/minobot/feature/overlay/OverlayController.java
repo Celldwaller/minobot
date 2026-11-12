@@ -327,7 +327,7 @@ public final class OverlayController implements OverlayActions {
 
     @Override
     public void toggleEconome(boolean on) {
-        log.info("Économe marks switched {}.", on ? "on" : "off");
+        log.info("Easyconome switched {}.", on ? "on" : "off");
         settings.update(config -> config.withEconome(on));
         redraw();
     }

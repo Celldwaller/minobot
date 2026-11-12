@@ -1,4 +1,4 @@
-# Économe : une croix sur chaque sort déjà lancé
+# Easyconome : une croix sur chaque sort déjà lancé
 
 Le challenge **Économe** interdit de lancer deux fois le même sort ou la même arme dans un combat, pour
 chaque personnage. Minobot lit le journal de combat dans le chat, retient ce que chaque personnage a lancé
@@ -37,6 +37,29 @@ et pose une croix sur la case correspondante de sa barre de sorts.
   - fiche d'un combattant survolé : elle remplace la barre par `0xD5CFAA`.
 - Les bords des cases sont anticrénelés : il ne faut jamais tester la couleur d'un bord.
 
+### L'affichage 16:9 (capture `captures/20261112-212320`, Foxtrot)
+
+C'est une option du jeu, réglée fenêtre par fenêtre. La scène reste où elle était, et une colonne s'ajoute
+à sa gauche, hors de la scène.
+
+- **Repère** : la bordure droite de la colonne, `0x8C8368`, de x 360 à 366, sur toute la hauteur. En
+  classique, à cet endroit, il n'y a que la barre noire. Le mode est relu à chaque regard (`vision.Hud`).
+- **Chat** : le volet du haut de la colonne. C'est là que s'écrit le journal de combat, sans horodatage.
+  - Le volet du bas contient les messages horodatés.
+  - Les lignes sont plus petites, à pas de 19 px (7,72 en coordonnées de scène).
+  - La dernière ligne occupe y 517..536, sur x 4..340 (scène -147,2..-10,8).
+  - Minobot lit les 10 dernières lignes, et l'OCR les lit sans erreur.
+  - Le volet est étroit : un nom de sort long passe à la ligne, et `FightLog` recolle les deux morceaux.
+- **Barre principale et arme** : même x, 2 px plus bas (sommets à 486,96 / 515,79 ; arme à 486,55).
+- **Colonne de 8 cases** : remplacée par une grille de 4×4 sous la carte.
+  - Coin de la première case : (246,72 ; 451,22). Pas de 26,13, cases de 24,27.
+  - Les deux premières rangées reprennent les 8 sorts de la colonne classique, dans le même ordre (cases
+    15 à 22). Les deux suivantes ajoutent les cases 23 à 30.
+  - Une même disposition sert donc dans les deux modes. Une case 23 à 30 n'existe pas en classique : son
+    sort est alors nommé dans la consigne au lieu d'être barré.
+- **À vérifier** : je n'ai vu le mode 16:9 qu'à cette taille de fenêtre. Les positions de la colonne sont
+  écrites par rapport à la scène, mais une fenêtre d'une autre forme pourrait la placer autrement.
+
 ## Conception
 
 1. **Lire le chat plus vite.** Pendant un combat, `ScreenWatcher` regarde toutes les 50 ms au lieu de
@@ -66,7 +89,7 @@ et pose une croix sur la case correspondante de sa barre de sorts.
    - un cadre sur chaque case du personnage au premier plan, vert si la case est connue, braise sinon ;
    - au survol d'une case, le nom du sort qu'elle contient ;
    - une consigne en haut : « clique un sort, puis lance-le ».
-6. **Croix**, avec l'interrupteur « Économe » : pendant un combat, une croix sur chaque case déjà
+6. **Croix**, avec l'interrupteur « Easyconome » : pendant un combat, une croix sur chaque case déjà
    utilisée par le personnage au premier plan. Les positions viennent de `GameStage`, donc elles sont
    exactes à toute taille de fenêtre. Les croix sont masquées quand :
    - la barre n'est pas visible (fiche d'un combattant, onglet « Obj. ») ;
@@ -86,11 +109,15 @@ et pose une croix sur la case correspondante de sa barre de sorts.
 - [x] `core.SpellLayouts` : dispositions, apprentissage, `spell-layouts.json`
 - [x] `ui.MarksView` + `ui.marks.SwingMarks` : croix, cadres, étiquette, consigne
 - [x] `feature.econome.SpellMarks` : suivi du premier plan, clics, apprentissage, contenu de la vue
-- [x] Interrupteurs « Économe » et « Spell setup » dans l'overlay (`Config`, `Switches`)
+- [x] Interrupteurs « Easyconome » et « Spell setup » dans l'overlay (`Config`, `Switches`)
 - [x] Câblage dans `MinobotApp` ; `CaptureProbe` décrit aussi le chat et la barre
 - [x] Tests, `./mvnw verify` (379 tests, tous verts)
 - [x] `CaptureProbe --read captures/20261112-201714` : les lancers et les fiches de combattant sont
   bien reconnus
+- [x] Échec critique : il ne compte pas comme un lancer
+- [x] Affichage 16:9 : détection par fenêtre, chat, barre et grille ; recollage des noms coupés
+- [x] Disposition propre à un perso : bouton « Own layout » / « Use class layout » dans la consigne du
+  réglage
 - [ ] Essai en jeu :
   - les croix tombent juste ;
   - les clics traversent la fenêtre des marques ;
@@ -100,8 +127,9 @@ et pose une croix sur la case correspondante de sa barre de sorts.
 
 - **Empreinte des icônes** : retrouver un sort dans la barre d'un autre personnage de la même classe, même
   s'il est rangé ailleurs, et signaler une barre réorganisée.
-- **Choisir la disposition d'un personnage dans l'overlay.** Pour l'instant, cela se fait à la main dans
-  `spell-layouts.json`.
+- **Partager une disposition entre quelques persos seulement.** Par exemple, deux Crâs terre sur cinq.
+  Pour l'instant, cela se fait à la main dans les `characters` de `spell-layouts.json`. Le bouton du
+  réglage, lui, ne bascule qu'entre la disposition de la classe et celle du perso.
 - **Apprendre par raccourci clavier** : aujourd'hui, seul un clic sur la case permet l'apprentissage.
 - **Chat remonté par le joueur** : d'anciennes lignes peuvent être prises pour des nouvelles. C'est sans
   effet dans le même combat, où une croix posée deux fois reste une croix.

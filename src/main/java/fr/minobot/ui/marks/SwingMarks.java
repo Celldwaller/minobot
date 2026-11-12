@@ -1,5 +1,6 @@
 package fr.minobot.ui.marks;
 
+import fr.minobot.ui.MarksActions;
 import fr.minobot.ui.MarksContent;
 import fr.minobot.ui.MarksContent.Kind;
 import fr.minobot.ui.MarksContent.Mark;
@@ -16,10 +17,14 @@ import javax.swing.JWindow;
 import javax.swing.SwingUtilities;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 
 /**
@@ -31,7 +36,8 @@ import java.util.List;
  * compositor — the window would be an opaque sheet over the game, and the marks are not drawn at all.
  *
  * <p>Like the banner it never takes the foreground ({@code setFocusableWindowState(false)}, and no more),
- * and it hands every call to the event dispatch thread.
+ * and it hands every call to the event dispatch thread. Its one click — the button in the hint — is routed
+ * by hand, as the banner's is.
  */
 public final class SwingMarks implements MarksView {
 
@@ -40,11 +46,16 @@ public final class SwingMarks implements MarksView {
     private static final int HINT_PAD_X = 14;
     private static final int HINT_PAD_Y = 7;
 
+    private static final int BUTTON_PAD_X = 11;
+    private static final int BUTTON_PAD_Y = 3;
+
     private static final int LABEL_PAD_X = 7;
     private static final int LABEL_PAD_Y = 3;
 
     /** A slot crossed out is dimmed under its cross, so it reads as spent at a glance. */
     private static final Color SPENT = new Color(6, 5, 5, 120);
+
+    private final MarksActions actions;
 
     /** Touched on the event dispatch thread only. Built on first show: there may never be one. */
     private JWindow window;
@@ -52,6 +63,10 @@ public final class SwingMarks implements MarksView {
 
     /** Read from the controller's thread, so it cannot live inside Swing. */
     private volatile boolean visible;
+
+    public SwingMarks(MarksActions actions) {
+        this.actions = actions;
+    }
 
     @Override
     public void show(MarksContent content, Rect anchor) {
@@ -104,10 +119,28 @@ public final class SwingMarks implements MarksView {
 
     private final class Marks extends JPanel {
 
-        private MarksContent content = new MarksContent(1, List.of(), "");
+        private MarksContent content = new MarksContent(1, List.of(), "", "");
+
+        /** Where the button was last painted, for the mouse to test against; {@code null} while there is none. */
+        private Rectangle button;
 
         private Marks() {
             setOpaque(false);
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseReleased(MouseEvent event) {
+                    if (button != null && button.contains(event.getPoint())) {
+                        actions.act();
+                    }
+                }
+            });
+            addMouseMotionListener(new MouseAdapter() {
+                @Override
+                public void mouseMoved(MouseEvent event) {
+                    final var over = button != null && button.contains(event.getPoint());
+                    setCursor(Cursor.getPredefinedCursor(over ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+                }
+            });
         }
 
         @Override
@@ -123,8 +156,9 @@ public final class SwingMarks implements MarksView {
                     paintLabel(canvas, scale, mark);
                 }
             }
+            button = null;
             if (!content.hint().isBlank()) {
-                paintHint(canvas, scale, content.hint());
+                paintHint(canvas, scale, content.hint(), content.action());
             }
             canvas.dispose();
         }
@@ -174,10 +208,15 @@ public final class SwingMarks implements MarksView {
             canvas.drawString(mark.label(), x + scale.px(LABEL_PAD_X), y + scale.px(LABEL_PAD_Y) + metrics.getAscent());
         }
 
-        private void paintHint(Graphics2D canvas, Scale scale, String hint) {
-            canvas.setFont(scale.font(Fonts.MEDIUM, Metrics.BODY));
-            final var metrics = canvas.getFontMetrics();
-            final var width = metrics.stringWidth(hint) + 2 * scale.px(HINT_PAD_X);
+        /** A pill under the top of the game, and the button inside it at its right end when there is one. */
+        private void paintHint(Graphics2D canvas, Scale scale, String hint, String action) {
+            final var font = scale.font(Fonts.MEDIUM, Metrics.BODY);
+            final var buttonFont = scale.font(Fonts.SEMIBOLD, Metrics.SMALL);
+            final var metrics = canvas.getFontMetrics(font);
+            final var buttonMetrics = canvas.getFontMetrics(buttonFont);
+            final var buttonWidth = action.isBlank() ? 0
+                    : buttonMetrics.stringWidth(action) + 2 * scale.px(BUTTON_PAD_X) + scale.px(Metrics.GAP);
+            final var width = metrics.stringWidth(hint) + buttonWidth + 2 * scale.px(HINT_PAD_X);
             final var height = metrics.getAscent() + metrics.getDescent() + 2 * scale.px(HINT_PAD_Y);
             final var x = (getWidth() - width) / 2;
             final var y = scale.px(HINT_TOP);
@@ -186,8 +225,21 @@ public final class SwingMarks implements MarksView {
             canvas.setColor(Theme.ACCENT_EDGE);
             canvas.setStroke(new BasicStroke(1));
             canvas.drawRoundRect(x, y, width - 1, height - 1, height, height);
+            canvas.setFont(font);
             canvas.setColor(Theme.TEXT_SOFT);
             canvas.drawString(hint, x + scale.px(HINT_PAD_X), y + scale.px(HINT_PAD_Y) + metrics.getAscent());
+            if (action.isBlank()) {
+                return;
+            }
+            final var buttonHeight = buttonMetrics.getAscent() + buttonMetrics.getDescent() + 2 * scale.px(BUTTON_PAD_Y);
+            button = new Rectangle(x + width - scale.px(HINT_PAD_X) - (buttonWidth - scale.px(Metrics.GAP)),
+                    y + (height - buttonHeight) / 2, buttonWidth - scale.px(Metrics.GAP), buttonHeight);
+            canvas.setColor(Theme.ACCENT);
+            canvas.fillRoundRect(button.x, button.y, button.width, button.height, buttonHeight, buttonHeight);
+            canvas.setFont(buttonFont);
+            canvas.setColor(Theme.TEXT);
+            canvas.drawString(action, button.x + scale.px(BUTTON_PAD_X),
+                    button.y + scale.px(BUTTON_PAD_Y) + buttonMetrics.getAscent());
         }
     }
 }

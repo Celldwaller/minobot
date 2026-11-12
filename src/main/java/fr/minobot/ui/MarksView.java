@@ -7,8 +7,8 @@ import fr.minobot.win32.Rect;
  * others, and kept just as narrow.
  *
  * <p>It is drawn over the whole of the game and takes none of it: what is not a mark lets the mouse
- * through to the game below, and nothing in it is clicked. Whether it is up, and what is on it, is the
- * controller's to decide.
+ * through to the game below, and the one thing in it that is clicked is the button beside its hint
+ * ({@link MarksActions}). Whether it is up, and what is on it, is the controller's to decide.
  */
 public interface MarksView {
 

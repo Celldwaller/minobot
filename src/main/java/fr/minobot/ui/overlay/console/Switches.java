@@ -15,7 +15,7 @@ import java.awt.FlowLayout;
 
 /**
  * The switches that act on the game for the player — <em>Auto-pass turns</em> and
- * <em>Auto-accept trades</em> — and the two that draw over it: <em>Économe</em>, which crosses out the
+ * <em>Auto-accept trades</em> — and the two that draw over it: <em>Easyconome</em>, which crosses out the
  * spells each character cast this fight, and <em>Spell setup</em>, which frames the slots to teach them.
  *
  * <p>They are the panel's <em>states</em> rather than keys — a {@link StatePill} each, saying what they
@@ -44,7 +44,7 @@ public final class Switches {
                 actions::toggleAutoPassTurn));
         row.add(StatePill.of(scale, "Auto-accept trades", content.autoAcceptTrade(),
                 actions::toggleAutoAcceptTrade));
-        row.add(StatePill.of(scale, "Économe", content.econome(), actions::toggleEconome));
+        row.add(StatePill.of(scale, "Easyconome", content.econome(), actions::toggleEconome));
         row.add(StatePill.of(scale, "Spell setup", content.spellSetup(), actions::toggleSpellSetup));
         row.add(Box.createHorizontalStrut(scale.px(Metrics.GAP)));
         row.add(trailing);

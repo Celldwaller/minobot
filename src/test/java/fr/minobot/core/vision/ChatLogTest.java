@@ -82,12 +82,12 @@ class ChatLogTest {
     }
 
     @Test
-    @DisplayName("of a frame, only the chat is read, once")
+    @DisplayName("of a frame, the layout's border is read, then the chat, once")
     void readsOneRegionOffTheFrame() {
         final var frame = RecordingFrame.of(chat(1, 2, 3, 4, 5, 6));
 
         assertThat(new ChatLog(reader).lines(frame)).isPresent();
-        assertThat(frame.regions).singleElement().satisfies(region -> {
+        assertThat(frame.regions).hasSize(2).last().satisfies(region -> {
             assertThat(region.left()).isEqualTo(410);
             assertThat(region.right()).isEqualTo(1159);
             assertThat(region.top()).isEqualTo(1120);
@@ -108,5 +108,38 @@ class ChatLogTest {
         final TextReader failing = _ -> Optional.empty();
 
         assertThat(new ChatLog(failing).lines(chat(1, 2, 3, 4, 5, 6))).isEmpty();
+    }
+
+    /**
+     * A 16:9 window: the column's border, and its chat's upper pane — beige from x 0 to 347 — its last line
+     * from y 517 to 536 and nine above it every 19.
+     */
+    private static Capture wideChat(int... lines) {
+        final var capture = HudTest.wide();
+        paint(capture, 0, 300, 348, 545, BEIGE);
+        for (var index = 0; index < lines.length; index++) {
+            final var top = 517 - 19 * (lines.length - 1 - index);
+            final var left = 4 + 10 * lines[index];
+            paint(capture, left, top + 3, left + 100, top + 15, INK);
+        }
+        return capture;
+    }
+
+    @Test
+    @DisplayName("in the 16:9 layout, the last ten lines of the column's upper pane are read")
+    void readsTheWideChat() {
+        assertThat(new ChatLog(reader).lines(wideChat(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)))
+                .contains(List.of("line 1", "line 2", "line 3", "line 4", "line 5",
+                        "line 6", "line 7", "line 8", "line 9", "line 10"));
+        assertThat(read).allSatisfy(line -> assertThat(line.height()).isEqualTo(19 + 2 * 20));
+    }
+
+    @Test
+    @DisplayName("in the 16:9 layout, the classic chat's place is not read")
+    void ignoresTheClassicPlaceInTheWideLayout() {
+        final var capture = chat(1, 2, 3, 4, 5, 6);
+        paint(capture, 360, 0, 366, 1369, HudTest.BORDER);
+
+        assertThat(new ChatLog(reader).lines(capture)).isEmpty();
     }
 }

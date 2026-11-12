@@ -12,9 +12,10 @@ import java.util.List;
  * <p>Every rectangle is in the game's client coordinates, measured off the game's own drawing: the view
  * draws it where it is told, and knows nothing of slots.
  *
- * @param hint what the player is asked to do, set apart at the top of the game — blank for nothing
+ * @param hint   what the player is asked to do, set apart at the top of the game — blank for nothing
+ * @param action the button beside the hint, which {@link MarksActions#act} answers — blank for none
  */
-public record MarksContent(double scale, List<Mark> marks, String hint) {
+public record MarksContent(double scale, List<Mark> marks, String hint, String action) {
 
     public MarksContent {
         marks = List.copyOf(marks);

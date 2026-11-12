@@ -3,7 +3,6 @@ package fr.minobot.core.vision;
 import fr.minobot.core.FightLog;
 import fr.minobot.core.FightTurns;
 import fr.minobot.core.Requests;
-import fr.minobot.core.SpellBars;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.win32.Frame;
 
@@ -47,8 +46,8 @@ public interface ScreenReader {
         };
     }
 
-    /** Whether the window's spell bar is up to be marked. */
+    /** Whether the window's spell bar is up to be marked, and where its slots are. */
     static ScreenReader spellBar(SpellBars bars) {
-        return (window, frame, seenAt) -> bars.report(window, SpellBar.isUp(frame), seenAt);
+        return (window, frame, seenAt) -> bars.report(window, Hud.of(frame), SpellBar.isUp(frame), seenAt);
     }
 }

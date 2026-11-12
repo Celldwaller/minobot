@@ -112,6 +112,39 @@ public final class SpellLayouts {
         }
     }
 
+    /** Whether the character uses a layout of their own rather than the one of their class. */
+    public synchronized boolean hasOwn(String character) {
+        return layouts.characters().containsKey(character);
+    }
+
+    /**
+     * Gives a character a layout of their own — for one who lays out their spells unlike the rest of their
+     * class — or gives them back their class's. Their own starts as a copy of what they used, so only what
+     * differs is learned again; and it is kept when they go back, ready for the next time.
+     *
+     * @param clazz their class, {@code null} when the player has not said
+     */
+    public void toggleOwn(String character, DofusClass clazz) {
+        synchronized (writeLock) {
+            final Layouts saved;
+            synchronized (this) {
+                if (!writable) {
+                    return;
+                }
+                final var given = new TreeMap<String, String>(layouts.characters());
+                final var all = new TreeMap<String, Map<Integer, String>>(layouts.layouts());
+                if (given.remove(character) == null) {
+                    all.putIfAbsent(character, all.getOrDefault(layoutOf(character, clazz), Map.of()));
+                    given.put(character, character);
+                }
+                layouts = new Layouts(all, given).copy();
+                saved = layouts;
+            }
+            log.info("'{}' now uses the layout '{}'.", character, layoutOf(character, clazz));
+            save(saved);
+        }
+    }
+
     /** Through a temp file and an atomic move, so the next start never reads half a file. */
     private void save(Layouts saved) {
         try {

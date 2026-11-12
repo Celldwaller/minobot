@@ -8,6 +8,7 @@ import fr.minobot.core.vision.RememberingTextReader;
 import fr.minobot.core.vision.RequestDialog;
 import fr.minobot.core.vision.ScreenReader;
 import fr.minobot.core.vision.ScreenWatcher;
+import fr.minobot.core.vision.SpellBars;
 import fr.minobot.core.vision.TurnBanner;
 import fr.minobot.feature.econome.SpellMarks;
 import fr.minobot.feature.group.GroupManager;

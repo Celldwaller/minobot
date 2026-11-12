@@ -35,32 +35,50 @@ class SpellBarTest {
     }
 
     @Test
-    @DisplayName("each slot is where it was measured, to the pixel")
-    void placesTheSlots() {
-        assertThat(SpellBar.slot(SpellBar.WEAPON, 2560, 1369)).isEqualTo(new Rect(1565, 1196, 1628, 1259));
-        assertThat(SpellBar.slot(1, 2560, 1369)).isEqualTo(new Rect(1642, 1197, 1705, 1260));
-        assertThat(SpellBar.slot(7, 2560, 1369).left()).isEqualTo(1642 + 6 * 69);
-        assertThat(SpellBar.slot(8, 2560, 1369)).isEqualTo(new Rect(1642, 1269, 1705, 1332));
-        assertThat(SpellBar.slot(15, 2560, 1369)).isEqualTo(new Rect(374, 475, 437, 538));
-        assertThat(SpellBar.slot(22, 2560, 1369).top()).isEqualTo(475 + 7 * 69);
+    @DisplayName("each classic slot is where it was measured, to the pixel")
+    void placesTheClassicSlots() {
+        assertThat(SpellBar.slots(Hud.CLASSIC)).isEqualTo(23);
+        assertThat(SpellBar.slot(Hud.CLASSIC, SpellBar.WEAPON, 2560, 1369)).isEqualTo(new Rect(1565, 1196, 1628, 1259));
+        assertThat(SpellBar.slot(Hud.CLASSIC, 1, 2560, 1369)).isEqualTo(new Rect(1642, 1197, 1705, 1260));
+        assertThat(SpellBar.slot(Hud.CLASSIC, 7, 2560, 1369).left()).isEqualTo(1642 + 6 * 69);
+        assertThat(SpellBar.slot(Hud.CLASSIC, 8, 2560, 1369)).isEqualTo(new Rect(1642, 1269, 1705, 1332));
+        assertThat(SpellBar.slot(Hud.CLASSIC, 15, 2560, 1369)).isEqualTo(new Rect(374, 475, 437, 538));
+        assertThat(SpellBar.slot(Hud.CLASSIC, 22, 2560, 1369).top()).isEqualTo(475 + 7 * 69);
     }
 
     @Test
-    @DisplayName("the slot under a point is the slot drawn there, at any size")
+    @DisplayName("each 16:9 slot is where it was measured: the bar two pixels lower, the grid under the map")
+    void placesTheWideSlots() {
+        assertThat(SpellBar.slots(Hud.WIDE)).isEqualTo(31);
+        assertThat(SpellBar.slot(Hud.WIDE, SpellBar.WEAPON, 2560, 1369).top()).isEqualTo(1198);
+        assertThat(SpellBar.slot(Hud.WIDE, 1, 2560, 1369).top()).isEqualTo(1199);
+        assertThat(SpellBar.slot(Hud.WIDE, 8, 2560, 1369).top()).isEqualTo(1270);
+        assertThat(SpellBar.slot(Hud.WIDE, 15, 2560, 1369)).isEqualTo(new Rect(974, 1111, 1034, 1171));
+        assertThat(SpellBar.slot(Hud.WIDE, 18, 2560, 1369).left()).isEqualTo(1167);
+        assertThat(SpellBar.slot(Hud.WIDE, 30, 2560, 1369)).satisfies(slot -> {
+            assertThat(slot.left()).isEqualTo(1167);
+            assertThat(slot.top()).isEqualTo(1304);
+        });
+    }
+
+    @Test
+    @DisplayName("the slot under a point is the slot drawn there, in either layout, at any size")
     void findsTheSlotUnderAPoint() {
-        for (final var size : new int[][]{{2560, 1369}, {1920, 1017}, {1280, 720}}) {
-            for (var slot = 0; slot < SpellBar.SLOTS; slot++) {
-                final var drawn = SpellBar.slot(slot, size[0], size[1]);
-                assertThat(SpellBar.slotAt(drawn.center(), size[0], size[1])).hasValue(slot);
+        for (final var hud : Hud.values()) {
+            for (final var size : new int[][]{{2560, 1369}, {1920, 1017}, {1280, 720}}) {
+                for (var slot = 0; slot < SpellBar.slots(hud); slot++) {
+                    final var drawn = SpellBar.slot(hud, slot, size[0], size[1]);
+                    assertThat(SpellBar.slotAt(hud, drawn.center(), size[0], size[1])).hasValue(slot);
+                }
             }
         }
-        assertThat(SpellBar.slotAt(new Point(1708, 1228), 2560, 1369)).as("between two slots").isEmpty();
-        assertThat(SpellBar.slotAt(new Point(1280, 600), 2560, 1369)).as("the map").isEmpty();
+        assertThat(SpellBar.slotAt(Hud.CLASSIC, new Point(1708, 1228), 2560, 1369)).as("between two slots").isEmpty();
+        assertThat(SpellBar.slotAt(Hud.CLASSIC, new Point(1280, 600), 2560, 1369)).as("the map").isEmpty();
     }
 
     @Test
     void refusesASlotThatIsNot() {
-        assertThatThrownBy(() -> SpellBar.slot(SpellBar.SLOTS, 2560, 1369)).isInstanceOf(IndexOutOfBoundsException.class);
+        assertThatThrownBy(() -> SpellBar.slot(Hud.CLASSIC, 23, 2560, 1369)).isInstanceOf(IndexOutOfBoundsException.class);
     }
 
     @Test

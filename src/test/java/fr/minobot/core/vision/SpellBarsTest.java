@@ -1,4 +1,4 @@
-package fr.minobot.core;
+package fr.minobot.core.vision;
 
 import fr.minobot.core.domain.GameWindow;
 import org.junit.jupiter.api.DisplayName;
@@ -19,13 +19,14 @@ class SpellBarsTest {
     void holdsTheLastSighting() {
         assertThat(bars.isUp(1)).isFalse();
 
-        bars.report(alpha, true, now.get());
+        bars.report(alpha, Hud.CLASSIC, true, now.get());
         assertThat(bars.isUp(1)).isTrue();
 
-        bars.report(alpha, false, now.get());
+        bars.report(alpha, Hud.WIDE, false, now.get());
+        assertThat(bars.hud(1)).isEqualTo(Hud.WIDE);
         assertThat(bars.isUp(1)).isFalse();
 
-        bars.report(alpha, true, now.get());
+        bars.report(alpha, Hud.CLASSIC, true, now.get());
         now.addAndGet(SpellBars.FRESH.toNanos());
         assertThat(bars.isUp(1)).as("stale").isFalse();
     }
