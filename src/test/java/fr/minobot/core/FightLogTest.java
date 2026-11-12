@@ -103,4 +103,23 @@ class FightLogTest {
         assertThat(failed).containsExactly(new Cast("Alpha", "Flèche", false));
         assertThat(settled).containsExactly(new Cast("Bravo", "Pluie", false));
     }
+
+    @Test
+    @DisplayName("a spell's name cut by the narrow chat is joined back from the next line")
+    void joinsACutName() {
+        look("a", "b", "c");
+        look("c", "Foxtrot lance Flèche de", "dispersion.", "Bravo perd 10 PDV.");
+
+        assertThat(heard).containsExactly(new Cast("Foxtrot", "Flèche de dispersion", false));
+        assertThat(settled).containsExactly(new Cast("Foxtrot", "Flèche de dispersion", false));
+    }
+
+    @Test
+    @DisplayName("a cast whose full stop the OCR missed keeps its name: the next line is another line")
+    void joinsNothingElse() {
+        look("a", "b", "c");
+        look("c", "Foxtrot lance Flèche", "Bravo perd 10 PDV.", "(Coup critique)", "[21:01] Bonjour.");
+
+        assertThat(heard).containsExactly(new Cast("Foxtrot", "Flèche", false));
+    }
 }

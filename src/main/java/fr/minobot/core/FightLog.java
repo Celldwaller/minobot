@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
+import java.util.regex.Pattern;
 
 /**
  * The fight log, line by line as the chat writes it, each line heard of once — and the casts in it.
@@ -17,6 +18,10 @@ import java.util.function.LongSupplier;
  * one found. What is new is what comes after the longest run of the last look's lines that the new look
  * starts with: the chat scrolled up by as many lines as were written. Two identical lines in a row — the
  * same spell cast twice — are told apart by their place, not their text.
+ *
+ * <p>A line too long for the chat goes on under it, and the 16:9 chat is narrow: a cast whose line does
+ * not end with its full stop takes the next line as the end of its spell's name, when that line reads like
+ * one — a full stop at its end, and none of the other lines' words.
  *
  * <p>A cast is told as soon as its line is read, then <em>settled</em> by the line that follows it: a
  * critical failure — {@code (Échec critique)}, written right under the cast — means the spell was not
@@ -32,6 +37,13 @@ public final class FightLog {
 
     /** Longer than any pause between two looks of a fight, shorter than the time from one fight to the next. */
     static final Duration SILENCE = Duration.ofSeconds(2);
+
+    /**
+     * Words of the other lines of the log, which the end of a spell's name has none of — nor its opening
+     * bracket: {@code (Coup critique)}, {@code [21:01] …}. Matched against the line with a space before it.
+     */
+    private static final Pattern NOT_A_NAME = Pattern.compile(
+            " perd | lance | attaque avec | gagne | entre | est | : |^ [(\\[]");
 
     private final List<Consumer<Cast>> listeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Cast>> failureListeners = new CopyOnWriteArrayList<>();
@@ -84,7 +96,8 @@ public final class FightLog {
         last = List.copyOf(lines);
         lastAt = now;
         read = true;
-        for (final var line : fresh) {
+        for (var index = 0; index < fresh.size(); index++) {
+            final var line = fresh.get(index);
             if (unsettled != null) {
                 final var failed = isFailure(line);
                 tell(failed ? failureListeners : settledListeners, unsettled);
@@ -93,12 +106,25 @@ public final class FightLog {
                     continue;
                 }
             }
-            Cast.in(line).ifPresent(cast -> {
-                log.debug("{} cast '{}'{}.", cast.fighter(), cast.action(), cast.weapon() ? " (weapon)" : "");
-                tell(listeners, cast);
-                unsettled = cast;
-            });
+            final var heard = Cast.in(line);
+            if (heard.isEmpty()) {
+                continue;
+            }
+            var cast = heard.get();
+            if (!line.strip().endsWith(".") && index + 1 < fresh.size() && endsAName(fresh.get(index + 1))) {
+                final var rest = fresh.get(++index).strip();
+                cast = new Cast(cast.fighter(), cast.action() + " " + rest.substring(0, rest.length() - 1), cast.weapon());
+            }
+            log.debug("{} cast '{}'{}.", cast.fighter(), cast.action(), cast.weapon() ? " (weapon)" : "");
+            tell(listeners, cast);
+            unsettled = cast;
         }
+    }
+
+    /** Whether a line reads like the end of a spell's name cut off the line above. */
+    private static boolean endsAName(String line) {
+        final var stripped = line.strip();
+        return stripped.length() > 1 && stripped.endsWith(".") && !NOT_A_NAME.matcher(" " + stripped).find();
     }
 
     /** {@code (Échec critique)} — read as {@code (Echec critique)} as often as not. */

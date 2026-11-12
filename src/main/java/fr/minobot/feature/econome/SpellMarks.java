@@ -5,7 +5,7 @@ import fr.minobot.app.Settings;
 import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FightLog;
 import fr.minobot.core.FightTurns;
-import fr.minobot.core.SpellBars;
+import fr.minobot.core.vision.SpellBars;
 import fr.minobot.core.SpellLayouts;
 import fr.minobot.core.SpellUsage;
 import fr.minobot.core.WindowManager;
@@ -13,7 +13,9 @@ import fr.minobot.core.domain.Cast;
 import fr.minobot.core.domain.Character;
 import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.GameWindow;
+import fr.minobot.core.vision.Hud;
 import fr.minobot.core.vision.SpellBar;
+import fr.minobot.ui.MarksActions;
 import fr.minobot.ui.MarksContent;
 import fr.minobot.ui.MarksContent.Kind;
 import fr.minobot.ui.MarksContent.Mark;
@@ -31,8 +33,8 @@ import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.LongSupplier;
-import java.util.function.Supplier;
 
 /**
  * Crosses out, on the spell bar of the character the player is on, every spell that character cast this
@@ -47,8 +49,12 @@ import java.util.function.Supplier;
  * Windows says nothing when a window moves, nor when a mouse button goes down in another process's window,
  * so both are polled. The marks are taken down while there is nothing to mark — no fight, or no bar on
  * screen: a fighter's sheet over it, its items tab — and while the panel covers the game.
+ *
+ * <p>A character uses their class's layout until the setup's button gives them one of their own — for a
+ * character who lays out their spells unlike the others of their class. The slots are where the window's
+ * {@link Hud} draws them, as last seen.
  */
-public final class SpellMarks {
+public final class SpellMarks implements MarksActions {
 
     private static final Logger log = LoggerFactory.getLogger(SpellMarks.class);
 
@@ -64,6 +70,8 @@ public final class SpellMarks {
     static final String SETUP_HINT = "Spell setup · %s, layout %s — click a spell, then cast it";
     static final String NO_BAR_HINT = "Spell setup · show the spell bar";
     static final String UNPLACED_HINT = "Cast, not on the bar yet: %s";
+    static final String OWN_LAYOUT = "Own layout";
+    static final String CLASS_LAYOUT = "Use class layout";
     static final String WEAPON_LABEL = "Weapon";
     static final String UNKNOWN_LABEL = "?";
 
@@ -90,9 +98,12 @@ public final class SpellMarks {
     /** The last slot clicked, waiting for its cast; {@code null} for none. */
     private volatile Lesson lesson;
 
+    /** The character whose setup is drawn, whom the setup's button is about; {@code null} for none. */
+    private volatile String inSetup;
+
     public SpellMarks(WindowApi api, WindowManager windows, Settings settings, FightTurns turns,
                       FightLog fightLog, SpellUsage usage, SpellBars bars, SpellLayouts layouts,
-                      ActivityLog activity, BooleanSupplier panelUp, Supplier<MarksView> viewFactory) {
+                      ActivityLog activity, BooleanSupplier panelUp, Function<MarksActions, MarksView> viewFactory) {
         this(api, windows, settings, turns, fightLog, usage, bars, layouts, activity, panelUp, viewFactory,
                 System::nanoTime, task -> Thread.ofVirtual().name("spell-marks-follow").start(task));
     }
@@ -103,7 +114,7 @@ public final class SpellMarks {
      */
     SpellMarks(WindowApi api, WindowManager windows, Settings settings, FightTurns turns,
                FightLog fightLog, SpellUsage usage, SpellBars bars, SpellLayouts layouts,
-               ActivityLog activity, BooleanSupplier panelUp, Supplier<MarksView> viewFactory, LongSupplier nanos,
+               ActivityLog activity, BooleanSupplier panelUp, Function<MarksActions, MarksView> viewFactory, LongSupplier nanos,
                Consumer<Runnable> follower) {
         this.api = api;
         this.windows = windows;
@@ -114,7 +125,7 @@ public final class SpellMarks {
         this.layouts = layouts;
         this.activity = activity;
         this.panelUp = panelUp;
-        this.view = viewFactory.get();
+        this.view = viewFactory.apply(this);
         this.nanos = nanos;
         this.follower = follower;
 
@@ -181,6 +192,15 @@ public final class SpellMarks {
         }
     }
 
+    /** The setup's button: the character in setup takes a layout of their own, or their class's back. */
+    @Override
+    public void act() {
+        final var character = inSetup;
+        if (character != null) {
+            Thread.ofVirtual().name("spell-layouts-own").start(() -> layouts.toggleOwn(character, classOf(character)));
+        }
+    }
+
     private void clicked(Game game) {
         cursorIn(game).ifPresent(slot -> {
             if (slot != SpellBar.WEAPON) {
@@ -191,7 +211,8 @@ public final class SpellMarks {
 
     private OptionalInt cursorIn(Game game) {
         return api.cursorPosition()
-                .map(cursor -> SpellBar.slotAt(new Point(cursor.x() - game.area().left(), cursor.y() - game.area().top()),
+                .map(cursor -> SpellBar.slotAt(bars.hud(game.window().hwnd()),
+                        new Point(cursor.x() - game.area().left(), cursor.y() - game.area().top()),
                         game.area().width(), game.area().height()))
                 .orElse(OptionalInt.empty());
     }
@@ -213,7 +234,7 @@ public final class SpellMarks {
 
     private void repeated(Cast cast) {
         if (settings.get().econome() && windows.windowOf(cast.fighter()).isPresent()) {
-            activity.record("Économe broken", cast.fighter() + " cast " + cast.action() + " twice");
+            activity.record("Easyconome: challenge lost", cast.fighter() + " cast " + cast.action() + " twice");
         }
     }
 
@@ -224,16 +245,22 @@ public final class SpellMarks {
         final var width = game.area().width();
         final var height = game.area().height();
         final var barUp = bars.isUp(game.window().hwnd());
+        final var hud = bars.hud(game.window().hwnd());
 
         final var marks = new ArrayList<Mark>();
         var hint = "";
+        var action = "";
+        inSetup = config.spellSetup() ? name : null;
         if (config.spellSetup()) {
+            if (classOf(name) != null) {
+                action = layouts.hasOwn(name) ? CLASS_LAYOUT : OWN_LAYOUT;
+            }
             if (barUp) {
                 final var hovered = cursorIn(game);
-                for (var slot = 0; slot < SpellBar.SLOTS; slot++) {
+                for (var slot = 0; slot < SpellBar.slots(hud); slot++) {
                     final var spell = slot == SpellBar.WEAPON ? Optional.of(WEAPON_LABEL) : layouts.spellAt(layout, slot);
                     final var label = hovered.isPresent() && hovered.getAsInt() == slot ? spell.orElse(UNKNOWN_LABEL) : "";
-                    marks.add(new Mark(SpellBar.slot(slot, width, height),
+                    marks.add(new Mark(SpellBar.slot(hud, slot, width, height),
                             spell.isPresent() ? Kind.KNOWN : Kind.UNKNOWN, label));
                 }
                 hint = SETUP_HINT.formatted(name, layout);
@@ -245,25 +272,29 @@ public final class SpellMarks {
             final var unplaced = new ArrayList<String>();
             for (final var cast : usage.of(name)) {
                 final var slot = cast.weapon() ? OptionalInt.of(SpellBar.WEAPON) : layouts.slotOf(layout, cast.action());
-                if (slot.isEmpty()) {
+                if (slot.isEmpty() || slot.getAsInt() >= SpellBar.slots(hud)) {
                     unplaced.add(cast.action());
                 } else if (barUp) {
-                    marks.add(new Mark(SpellBar.slot(slot.getAsInt(), width, height), Kind.USED, ""));
+                    marks.add(new Mark(SpellBar.slot(hud, slot.getAsInt(), width, height), Kind.USED, ""));
                 }
             }
             if (hint.isEmpty() && !unplaced.isEmpty()) {
                 hint = UNPLACED_HINT.formatted(String.join(", ", unplaced));
             }
         }
-        return new MarksContent(config.overlayScale(), marks, hint);
+        return new MarksContent(config.overlayScale(), marks, hint, action);
     }
 
     private String layoutOf(String character) {
-        final DofusClass clazz = settings.get().characters().stream()
+        return layouts.layoutOf(character, classOf(character));
+    }
+
+    /** The class the player pinned to the character, {@code null} when they have not. */
+    private DofusClass classOf(String character) {
+        return settings.get().characters().stream()
                 .filter(it -> it.name().equalsIgnoreCase(character))
                 .map(Character::clazz)
                 .findFirst().orElse(null);
-        return layouts.layoutOf(character, clazz);
     }
 
     private record Game(GameWindow window, Rect area) {

@@ -5,12 +5,13 @@ import fr.minobot.app.TestConfigs;
 import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FightLog;
 import fr.minobot.core.FightTurns;
-import fr.minobot.core.SpellBars;
+import fr.minobot.core.vision.SpellBars;
 import fr.minobot.core.SpellLayouts;
 import fr.minobot.core.SpellUsage;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.Activity;
 import fr.minobot.core.domain.GameWindow;
+import fr.minobot.core.vision.Hud;
 import fr.minobot.core.vision.SpellBar;
 import fr.minobot.ui.FakeMarksView;
 import fr.minobot.ui.MarksContent;
@@ -57,6 +58,9 @@ class SpellMarksTest {
     private final AtomicBoolean panelUp = new AtomicBoolean();
     private final FakeMarksView view = new FakeMarksView();
 
+    /** The layout the bar is seen in. */
+    private Hud hud = Hud.CLASSIC;
+
     private Settings settings;
     private SpellLayouts layouts;
     private SpellMarks marks;
@@ -65,7 +69,7 @@ class SpellMarksTest {
         settings = TestConfigs.settings(switches);
         layouts = new SpellLayouts(folder.resolve("spell-layouts.json"));
         marks = new SpellMarks(api, new WindowManager(api, settings), settings, turns, fightLog, usage, bars,
-                layouts, activity, panelUp::get, () -> view, System::nanoTime, _ -> {
+                layouts, activity, panelUp::get, _ -> view, System::nanoTime, _ -> {
         });
         fightLog.report(List.of("before the fight"));
     }
@@ -76,11 +80,11 @@ class SpellMarksTest {
     }
 
     private void barUp() {
-        bars.report(foxtrot, true, System.nanoTime());
+        bars.report(foxtrot, hud, true, System.nanoTime());
     }
 
     private Rect slot(int slot) {
-        return SpellBar.slot(slot, area.width(), area.height());
+        return SpellBar.slot(hud, slot, area.width(), area.height());
     }
 
     /** A press and a release over the slot, each seen by a tick. */
@@ -160,7 +164,7 @@ class SpellMarksTest {
         marks.tick();
 
         final var content = view.content().orElseThrow();
-        assertThat(content.marks()).hasSize(SpellBar.SLOTS);
+        assertThat(content.marks()).hasSize(SpellBar.slots(Hud.CLASSIC));
         assertThat(drawn(Kind.KNOWN)).extracting(Mark::slot).containsExactly(slot(SpellBar.WEAPON), slot(3));
         assertThat(content.marks()).filteredOn(mark -> !mark.label().isEmpty())
                 .singleElement().satisfies(mark -> assertThat(mark.label()).isEqualTo("Flèche d'Expiation"));
@@ -223,6 +227,72 @@ class SpellMarksTest {
     private void awaitLearned(String spell) throws InterruptedException {
         final var file = folder.resolve("spell-layouts.json");
         for (var tries = 0; tries < 200 && (layouts.slotOf("Foxtrot", spell).isEmpty() || !Files.exists(file)); tries++) {
+            Thread.sleep(10);
+        }
+    }
+
+    @Test
+    @DisplayName("in the 16:9 layout, the slots are where its grid puts them")
+    void marksTheWideLayout() {
+        hud = Hud.WIDE;
+        start(Map.of("econome", true));
+        layouts.learn("Foxtrot", 27, "Flèche Harcelante");
+        turns.report("Foxtrot");
+        barUp();
+
+        cast("Foxtrot lance Flèche Harcelante.");
+        marks.tick();
+
+        assertThat(drawn(Kind.USED)).extracting(Mark::slot).containsExactly(slot(27));
+    }
+
+    @Test
+    @DisplayName("a slot of the 16:9 grid that the classic layout has not is named, not crossed")
+    void namesASlotTheBarHasNot() {
+        start(Map.of("econome", true));
+        layouts.learn("Foxtrot", 27, "Flèche Harcelante");
+        turns.report("Foxtrot");
+        barUp();
+
+        cast("Foxtrot lance Flèche Harcelante.");
+        marks.tick();
+
+        assertThat(drawn(Kind.USED)).isEmpty();
+        assertThat(view.content().orElseThrow().hint()).contains("Flèche Harcelante");
+    }
+
+    @Test
+    @DisplayName("the setup's button gives a character of a class a layout of their own, and back")
+    void togglesALayoutOfOnesOwn() throws InterruptedException {
+        start(Map.of("spell_setup", true, "characters", List.of(Map.of("name", "Foxtrot", "class", "CRA"))));
+        barUp();
+
+        marks.tick();
+        assertThat(view.content().orElseThrow().action()).isEqualTo(SpellMarks.OWN_LAYOUT);
+
+        marks.act();
+        for (var tries = 0; tries < 200 && !layouts.hasOwn("Foxtrot"); tries++) {
+            Thread.sleep(10);
+        }
+        awaitWritten();
+        marks.tick();
+        assertThat(view.content().orElseThrow().action()).isEqualTo(SpellMarks.CLASS_LAYOUT);
+        assertThat(view.content().orElseThrow().hint()).isEqualTo(SpellMarks.SETUP_HINT.formatted("Foxtrot", "Foxtrot"));
+    }
+
+    @Test
+    @DisplayName("a character with no class has no button: their layout is their own already")
+    void noButtonWithoutAClass() {
+        start(Map.of("spell_setup", true));
+        barUp();
+
+        marks.tick();
+
+        assertThat(view.content().orElseThrow().action()).isEmpty();
+    }
+
+    private void awaitWritten() throws InterruptedException {
+        for (var tries = 0; tries < 200 && !Files.exists(folder.resolve("spell-layouts.json")); tries++) {
             Thread.sleep(10);
         }
     }

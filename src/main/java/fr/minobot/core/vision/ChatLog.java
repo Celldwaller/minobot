@@ -25,37 +25,33 @@ import java.util.Optional;
  * <p>The box is checked before it is read: the beige band under its last line must be there, which it is
  * not while the chat is folded away or something covers it.
  *
- * <p>Positions are the stage's (see {@link GameStage}), measured on a 2560x1369 window. It remembers the
- * lines it read, so each window's chat is read by a reader of its own.
+ * <p>The chat is where the window's {@link Hud} puts it. Positions are the stage's (see {@link GameStage}),
+ * measured on a 2560x1369 window. It remembers the lines it read, so each window's chat is read by a reader
+ * of its own.
  */
 public final class ChatLog {
 
     /** The chat's background. */
     private static final int BEIGE = 0xD5CFAA;
 
-    /** How many lines are read, from the bottom up: the six the chat shows at its smallest. */
-    static final int LINES = 6;
+    /**
+     * The classic chat, under the map: six lines at its smallest. Its right edge is the longest line the
+     * fight log writes; the filters' coloured boxes sit further right on its top line.
+     */
+    static final Pane CLASSIC = new Pane(17.7, 322.0, 528.0, 12.18, 530.0, 6);
 
     /**
-     * Left of the text, and right of the longest line the fight log writes. The filters' coloured boxes sit
-     * further right on the top line.
+     * The 16:9 chat's upper pane, left of the stage, where the fight log is written: a smaller type, and
+     * twenty-four lines of which the last ten are read — a spell that hits every fighter writes a line for
+     * each. Its right edge is left of its scroll bar.
      */
-    private static final double LEFT = 17.7;
-    private static final double RIGHT = 322.0;
-
-    /** Under the last line, and the pitch from one line to the next. */
-    private static final double BOTTOM = 528.0;
-    private static final double PITCH = 12.18;
-
-    /** A row of the beige band under the last line, clear of any letter; checked at these columns. */
-    private static final double CHECK_ROW = 530.0;
-    private static final double[] CHECK_COLUMNS = {LEFT, 170.0, RIGHT - 1};
+    static final Pane WIDE = new Pane(-147.2, -10.8, 217.69, 7.7166, 219.3, 10);
 
     /** The OCR finds nothing in text that touches its image's edge. */
     private static final int MARGIN = 20;
 
     /** Enough to hold every line on screen twice over: a line scrolled up must still be known. */
-    private static final int REMEMBERED = 4 * LINES;
+    private static final int REMEMBERED = 4 * WIDE.lines();
 
     private final TextReader reader;
 
@@ -72,23 +68,26 @@ public final class ChatLog {
     }
 
     /**
-     * The chat's last {@value #LINES} lines, oldest first; a line with nothing on it is blank. Empty when
-     * there is no chat to read, or the OCR failed on a line — a list with a hole in it would say a line was
-     * new that was not.
+     * The chat's last lines, oldest first; a line with nothing on it is blank. Empty when there is no chat
+     * to read, or the OCR failed on a line — a list with a hole in it would say a line was new that was not.
      */
     public Optional<List<String>> lines(Frame frame) {
+        final var pane = Hud.of(frame) == Hud.WIDE ? WIDE : CLASSIC;
         final var stage = GameStage.of(frame);
-        final var top = stage.y(BOTTOM - LINES * PITCH);
-        return Region.of(frame, stage.x(LEFT), top, stage.x(RIGHT), stage.y(CHECK_ROW) + 1)
-                .filter(box -> isUp(box, stage))
-                .flatMap(box -> read(box, stage));
+        final var left = stage.x(pane.left());
+        if (left < 0) {
+            return Optional.empty();
+        }
+        return Region.of(frame, left, stage.y(pane.top()), stage.x(pane.right()), stage.y(pane.checkRow()) + 1)
+                .filter(box -> pane.isUp(box, stage))
+                .flatMap(box -> read(box, stage, pane));
     }
 
-    private Optional<List<String>> read(Region box, GameStage stage) {
-        final var lines = new ArrayList<String>(LINES);
-        for (var index = LINES - 1; index >= 0; index--) {
-            final var pixels = box.crop(stage.x(LEFT), stage.y(BOTTOM - (index + 1) * PITCH),
-                    stage.x(RIGHT), stage.y(BOTTOM - index * PITCH));
+    private Optional<List<String>> read(Region box, GameStage stage, Pane pane) {
+        final var lines = new ArrayList<String>(pane.lines());
+        for (var index = pane.lines() - 1; index >= 0; index--) {
+            final var pixels = box.crop(stage.x(pane.left()), stage.y(pane.bottom() - (index + 1) * pane.pitch()),
+                    stage.x(pane.right()), stage.y(pane.bottom() - index * pane.pitch()));
             final var text = text(pixels);
             if (text.isEmpty()) {
                 return Optional.empty();
@@ -112,14 +111,26 @@ public final class ChatLog {
         return text;
     }
 
-    private static boolean isUp(Region box, GameStage stage) {
-        final var y = stage.y(CHECK_ROW);
-        for (final var column : CHECK_COLUMNS) {
-            if (!box.is(stage.x(column), y, BEIGE)) {
-                return false;
-            }
+    /**
+     * Where a chat's lines are, in stage coordinates: left of the text and right of it, under the last line
+     * and from one line to the next, a row of the beige under the last line — checked at both ends and in
+     * the middle — and how many lines are read.
+     */
+    record Pane(double left, double right, double bottom, double pitch, double checkRow, int lines) {
+
+        double top() {
+            return bottom - lines * pitch;
         }
-        return true;
+
+        boolean isUp(Region box, GameStage stage) {
+            final var y = stage.y(checkRow);
+            for (final var column : new double[]{left, (left + right) / 2, right - 1}) {
+                if (!box.is(stage.x(column), y, BEIGE)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     /** A line's pixels, compared whole: a {@link Capture} is compared by identity. */

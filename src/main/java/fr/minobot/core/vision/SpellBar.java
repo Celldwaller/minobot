@@ -10,9 +10,12 @@ import java.util.OptionalInt;
  * Where the slots of a character's spell bar are, and whether the bar is on screen to be marked.
  *
  * <p>The slots are numbered once for all: {@value #WEAPON} is the weapon's, left of the main bar; 1 to 7
- * the main bar's top row and 8 to 14 its bottom row, left to right; 15 to 22 the column at the left edge
- * of the game, top to bottom. They are where the game draws them, whatever is in them — a player's bar is
- * theirs to fill, not ours to read.
+ * the main bar's top row and 8 to 14 its bottom row, left to right. From 15 come the extra slots, which
+ * the {@link Hud} lays out its own way: the classic one as a column of eight at the left edge of the game,
+ * top to bottom (15 to 22); the 16:9 one as a grid of sixteen under the map, row by row (15 to 30) — its
+ * first two rows the same eight spells as the column, in the same order, so a layout learned in one holds
+ * in the other. They are where the game draws them, whatever is in them — a player's bar is theirs to fill,
+ * not ours to read.
  *
  * <p>The bar is not always there to be marked. Hovering a fighter replaces it with that fighter's sheet,
  * and its <em>Obj.</em> tab with the character's items; it is up when the gaps between its slots show its
@@ -26,35 +29,33 @@ public final class SpellBar {
     /** The weapon's slot. */
     public static final int WEAPON = 0;
 
-    /** The slots in a row of the main bar, and in the column. */
+    /** The first of the extra slots, past the main bar's two rows of seven. */
     private static final int ROW = 7;
-    private static final int COLUMN = 8;
-
-    /** How many slots there are: the weapon, two rows of seven, and the column of eight. */
-    public static final int SLOTS = 1 + 2 * ROW + COLUMN;
+    private static final int FIRST_EXTRA = 1 + 2 * ROW;
 
     /** A slot's side, its frame included. */
     private static final double SIDE = 25.6;
 
     private static final double WEAPON_LEFT = 486.7;
-    private static final double WEAPON_TOP = 485.7;
 
-    /** The main bar: its first slot's corner, and from one slot to the next. */
+    /** The main bar: its first slot's left edge, and from one slot to the next across. */
     private static final double MAIN_LEFT = 518.0;
-    private static final double MAIN_TOP = 486.1;
     private static final double MAIN_PITCH_X = 28.02;
-    private static final double MAIN_PITCH_Y = 29.24;
 
-    /** The column at the left edge. */
-    private static final double COLUMN_LEFT = 3.0;
-    private static final double COLUMN_TOP = 192.9;
-    private static final double COLUMN_PITCH = 28.02;
+    /** The classic top edges, of the weapon and of the main bar, and from one row to the next. */
+    private static final Bar CLASSIC = new Bar(485.7, 486.1, 29.24,
+            new Extra(3.0, 192.9, 1, 8, 28.02, SIDE));
+
+    /** The 16:9 ones: the same bar a little lower, and the grid of four by four under the map. */
+    private static final Bar WIDE = new Bar(486.55, 486.96, 28.84,
+            new Extra(246.72, 451.22, 4, 4, 26.128, 24.27));
 
     /** The bar's background, between its slots — where a fighter's sheet shows its own beige. */
     private static final int BACKGROUND = 0xB8B18F;
 
-    /** The gaps checked: right of the first six slots of the top row, half way down it. */
+    /** The gaps checked: right of the first six slots of the top row, half way down it, in either layout. */
     private static final double GAP_OFFSET = SIDE + 1.2;
+    private static final double GAP_ROW = CLASSIC.mainTop() + SIDE / 2;
     private static final int GAPS = 6;
 
     /** The <em>Sorts</em> tab while it is the one lit, at a point clear of its letters. */
@@ -66,9 +67,14 @@ public final class SpellBar {
     private static final double READ_LEFT = MAIN_LEFT;
     private static final double READ_RIGHT = TAB_X + 1;
     private static final double READ_TOP = TAB_Y;
-    private static final double READ_BOTTOM = MAIN_TOP + SIDE;
+    private static final double READ_BOTTOM = CLASSIC.mainTop() + SIDE;
 
     private SpellBar() {
+    }
+
+    /** How many slots a layout has: the weapon, two rows of seven, and its extra slots. */
+    public static int slots(Hud hud) {
+        return FIRST_EXTRA + bar(hud).extra().count();
     }
 
     /** Whether the frame shows the spell bar, with its spells: no fighter's sheet over it, no items. */
@@ -81,7 +87,7 @@ public final class SpellBar {
     }
 
     private static boolean gapsShow(Region bar, GameStage stage) {
-        final var y = stage.y(MAIN_TOP + SIDE / 2);
+        final var y = stage.y(GAP_ROW);
         for (var gap = 0; gap < GAPS; gap++) {
             if (!bar.is(stage.x(MAIN_LEFT + gap * MAIN_PITCH_X + GAP_OFFSET), y, BACKGROUND)) {
                 return false;
@@ -96,51 +102,58 @@ public final class SpellBar {
      * @param width  the client area's width
      * @param height the client area's height
      */
-    public static Rect slot(int slot, int width, int height) {
+    public static Rect slot(Hud hud, int slot, int width, int height) {
         final var stage = GameStage.of(width, height);
-        final var left = left(slot);
-        final var top = top(slot);
-        return new Rect(stage.x(left), stage.y(top), stage.x(left + SIDE), stage.y(top + SIDE));
+        final var box = box(hud, slot);
+        return new Rect(stage.x(box[0]), stage.y(box[1]), stage.x(box[0] + box[2]), stage.y(box[1] + box[2]));
     }
 
     /** The slot under a point of a client area this wide and high, in client coordinates. */
-    public static OptionalInt slotAt(Point point, int width, int height) {
+    public static OptionalInt slotAt(Hud hud, Point point, int width, int height) {
         final var stage = GameStage.of(width, height);
         final var x = stage.stageX(point.x());
         final var y = stage.stageY(point.y());
-        for (var slot = 0; slot < SLOTS; slot++) {
-            if (x >= left(slot) && x < left(slot) + SIDE && y >= top(slot) && y < top(slot) + SIDE) {
+        for (var slot = 0; slot < slots(hud); slot++) {
+            final var box = box(hud, slot);
+            if (x >= box[0] && x < box[0] + box[2] && y >= box[1] && y < box[1] + box[2]) {
                 return OptionalInt.of(slot);
             }
         }
         return OptionalInt.empty();
     }
 
-    private static double left(int slot) {
-        checkIndex(slot);
+    /** A slot's left edge, top edge and side, in stage coordinates. */
+    private static double[] box(Hud hud, int slot) {
+        if (slot < 0 || slot >= slots(hud)) {
+            throw new IndexOutOfBoundsException("There is no spell slot " + slot + " in the " + hud + " layout");
+        }
+        final var bar = bar(hud);
         if (slot == WEAPON) {
-            return WEAPON_LEFT;
+            return new double[]{WEAPON_LEFT, bar.weaponTop(), SIDE};
         }
-        if (slot <= 2 * ROW) {
-            return MAIN_LEFT + (slot - 1) % ROW * MAIN_PITCH_X;
+        if (slot < FIRST_EXTRA) {
+            return new double[]{MAIN_LEFT + (slot - 1) % ROW * MAIN_PITCH_X,
+                    bar.mainTop() + (slot - 1) / ROW * bar.mainPitchY(), SIDE};
         }
-        return COLUMN_LEFT;
+        final var extra = bar.extra();
+        final var index = slot - FIRST_EXTRA;
+        return new double[]{extra.left() + index % extra.columns() * extra.pitch(),
+                extra.top() + index / extra.columns() * extra.pitch(), extra.side()};
     }
 
-    private static double top(int slot) {
-        checkIndex(slot);
-        if (slot == WEAPON) {
-            return WEAPON_TOP;
-        }
-        if (slot <= 2 * ROW) {
-            return MAIN_TOP + (slot - 1) / ROW * MAIN_PITCH_Y;
-        }
-        return COLUMN_TOP + (slot - 1 - 2 * ROW) * COLUMN_PITCH;
+    private static Bar bar(Hud hud) {
+        return hud == Hud.WIDE ? WIDE : CLASSIC;
     }
 
-    private static void checkIndex(int slot) {
-        if (slot < 0 || slot >= SLOTS) {
-            throw new IndexOutOfBoundsException("There is no spell slot " + slot);
+    /** A layout's top edges for the weapon and the main bar, its rows' pitch, and its extra slots. */
+    private record Bar(double weaponTop, double mainTop, double mainPitchY, Extra extra) {
+    }
+
+    /** The extra slots: the first one's corner, laid out row by row, all at one pitch and of one side. */
+    private record Extra(double left, double top, int columns, int rows, double pitch, double side) {
+
+        int count() {
+            return columns * rows;
         }
     }
 }

@@ -5,6 +5,7 @@ import fr.minobot.app.Settings;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.Cast;
 import fr.minobot.core.vision.ChatLog;
+import fr.minobot.core.vision.Hud;
 import fr.minobot.core.vision.RequestDialog;
 import fr.minobot.core.vision.SpellBar;
 import fr.minobot.core.vision.TurnBanner;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * A developer's probe, not a feature: captures every game window to PNG files, so what Minobot can
@@ -98,6 +100,7 @@ public final class CaptureProbe {
         String describe(Capture capture) {
             return banner.fighter(capture).map(name -> "banner: " + name).orElse("no banner")
                     + dialog.request(capture).map(request -> ", request: " + request).orElse("")
+                    + ", " + Hud.of(capture).name().toLowerCase(Locale.ROOT)
                     + (SpellBar.isUp(capture) ? ", spell bar" : ", no spell bar")
                     + chat.lines(capture).map(Vision::casts).orElse(", no chat");
         }
