@@ -71,6 +71,25 @@ personnage à l'écran a déjà lancé** dans ce combat, arme comprise.
    lancez-le** dans les 10 secondes : la case passe au vert, et son nom s'affiche au survol.
 2. Coupez **Setup** et activez **Easyconome**.
 
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/easyconome_setup.png" alt="Setup en cours"><br>
+      <sub><b>Setup</b> — en vert les cases apprises, en pointillés rouges celles qui restent</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/easyconome_setup_done.png" alt="Setup terminé, affichage 16:9"><br>
+      <sub><b>Setup terminé</b> (affichage 16:9) — le nom du sort s'affiche au survol</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <img src="assets/easyconome_cross.png" alt="Sorts barrés en combat" width="60%"><br>
+      <sub><b>En combat</b> — les sorts déjà lancés sont barrés</sub>
+    </td>
+  </tr>
+</table>
+
 Les cases apprises valent pour **toute la classe** et sont retenues dans `spell-layouts.json`. Si un
 personnage range ses sorts autrement que les autres de sa classe, le bouton **Own layout**, affiché
 pendant le réglage, lui donne une disposition à lui (il faut lui avoir choisi une classe).
