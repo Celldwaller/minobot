@@ -69,21 +69,30 @@ public final class WhisperList {
         this.actions = actions;
     }
 
-    public JComponent build(Scale scale, List<Whisper> whispers) {
-        final var column = Card.plainColumn().pinnedTo(scale.px(WIDTH));
-        column.add(new SectionHeader(scale, "Whispers", null, clearButton(scale, whispers.isEmpty())));
+    /**
+     * @param height the column's whole height, whatever it holds — as many whispers are shown as fit in
+     *               it, up to {@link #VISIBLE}
+     */
+    public JComponent build(Scale scale, List<Whisper> whispers, int height) {
+        final var column = Card.plainColumn().pinnedTo(scale.px(WIDTH), height);
+        final var header = new SectionHeader(scale, "Whispers", null, clearButton(scale, whispers.isEmpty()));
+        column.add(header);
 
         if (whispers.isEmpty()) {
             column.add(new Hint(scale, NOTHING_YET));
             return column;
         }
 
-        for (final var whisper : whispers.stream().limit(VISIBLE).toList()) {
+        final var hint = new Hint(scale, "Click one to jump to that character.");
+        final var step = scale.px(WhisperCard.HEIGHT) + scale.px(4);
+        final var room = height - header.getPreferredSize().height - scale.px(4) - hint.getPreferredSize().height;
+        final var fits = Math.max(1, Math.min(VISIBLE, room / step));
+        for (final var whisper : whispers.stream().limit(fits).toList()) {
             column.add(new WhisperCard(scale, whisper, () -> actions.openWhisper(whisper.id())));
             column.add(Box.createVerticalStrut(scale.px(4)));
         }
         column.add(Box.createVerticalStrut(scale.px(4)));
-        column.add(new Hint(scale, "Click one to jump to that character."));
+        column.add(hint);
         return column;
     }
 

@@ -86,7 +86,11 @@ public final class SpellUsage {
         }
     }
 
-    synchronized void clear() {
+    /**
+     * Forgets every cast — as a new fight does, or when the player says one began: two fights less than
+     * {@link FightTurns#FIGHT_GOES_ON} apart are one to the turns.
+     */
+    public synchronized void clear() {
         cast.clear();
         unsettled = null;
     }

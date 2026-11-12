@@ -36,6 +36,9 @@ public final class Card extends javax.swing.JPanel {
     /** The width this card is held to, or {@code -1} to take whatever its contents need. */
     private int pinnedWidth = -1;
 
+    /** The same for the height. */
+    private int pinnedHeight = -1;
+
     public Card(Scale scale, Color fill, Color edge, int radius) {
         this.scale = scale;
         this.fill = fill;
@@ -74,6 +77,24 @@ public final class Card extends javax.swing.JPanel {
         return this;
     }
 
+    /**
+     * Holds this card to a width and a height both — for a box whose contents come and go, and that must
+     * not move what is around it when they do.
+     *
+     * @param width  in pixels, already through a {@link Scale}
+     * @param height the same
+     */
+    public Card pinnedTo(int width, int height) {
+        this.pinnedWidth = width;
+        this.pinnedHeight = height;
+        return this;
+    }
+
+    private Dimension pinned(Dimension natural) {
+        return new Dimension(pinnedWidth < 0 ? natural.width : pinnedWidth,
+                pinnedHeight < 0 ? natural.height : pinnedHeight);
+    }
+
     private static Card stacking(Card card) {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -82,21 +103,21 @@ public final class Card extends javax.swing.JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        final var natural = super.getPreferredSize();
-        return pinnedWidth < 0 ? natural : new Dimension(pinnedWidth, natural.height);
+        return pinned(super.getPreferredSize());
     }
 
     @Override
     public Dimension getMinimumSize() {
-        final var natural = super.getMinimumSize();
-        return pinnedWidth < 0 ? natural : new Dimension(pinnedWidth, natural.height);
+        return pinned(super.getMinimumSize());
     }
 
     @Override
     public Dimension getMaximumSize() {
-        return pinnedWidth < 0
-                ? super.getMaximumSize()
-                : new Dimension(pinnedWidth, Integer.MAX_VALUE);
+        if (pinnedWidth < 0 && pinnedHeight < 0) {
+            return super.getMaximumSize();
+        }
+        return new Dimension(pinnedWidth < 0 ? Integer.MAX_VALUE : pinnedWidth,
+                pinnedHeight < 0 ? Integer.MAX_VALUE : pinnedHeight);
     }
 
     @Override

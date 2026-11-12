@@ -74,6 +74,12 @@ public interface OverlayActions {
     void toggleSpellSetup(boolean on);
 
     /**
+     * Forgets the spells cast this fight, and their crosses with them — what a new fight does, for the
+     * one that began too soon after the last to be told apart from it.
+     */
+    void resetEconome();
+
+    /**
      * Brings up the character a whisper was sent to, so the player can answer it — the panel's version of
      * the click the toast offered before it faded.
      *

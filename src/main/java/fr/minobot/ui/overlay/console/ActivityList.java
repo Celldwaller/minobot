@@ -55,8 +55,10 @@ public final class ActivityList {
     private static final String NOTHING_YET = "Nothing yet — Minobot is watching.";
 
     public JComponent build(Scale scale, List<Activity> entries) {
-        final var column = Card.plainColumn().pinnedTo(scale.px(WIDTH));
-        column.add(new SectionHeader(scale, "Activity", "what Minobot just did", null));
+        final var header = new SectionHeader(scale, "Activity", "what Minobot just did", null);
+        final var column = Card.plainColumn().pinnedTo(scale.px(WIDTH),
+                header.getPreferredSize().height + VISIBLE * scale.px(LINE_HEIGHT));
+        column.add(header);
 
         if (entries.isEmpty()) {
             column.add(new Hint(scale, NOTHING_YET));
