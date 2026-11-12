@@ -25,8 +25,9 @@ import java.util.Map;
  * is played on screens of every size. It is a multiplier of the natural size of every piece of the
  * panel, and the view is the only one that knows what those natural sizes are.
  *
- * <p>{@code autoPassTurn} and {@code autoAcceptTrade} are the features the panel shows a state for
- * rather than a key: they have no hotkey, so the panel draws each as an explicit on/off switch.
+ * <p>{@code autoPassTurn}, {@code autoAcceptTrade}, {@code econome} and {@code spellSetup} are the features
+ * the panel shows a state for rather than a key: they have no hotkey, so the panel draws each as an explicit
+ * on/off switch.
  *
  * <p>{@code activity} and {@code whispers} both arrive <strong>newest first</strong>, which is the order
  * the panel reads them in: the player opens it to see what just happened, so the last thing to have
@@ -41,6 +42,7 @@ import java.util.Map;
  */
 public record OverlayContent(List<CharacterEntry> characters, Map<Feature, String> hotkeys, double scale,
                              boolean autoPassTurn, boolean autoAcceptTrade,
+                             boolean econome, boolean spellSetup,
                              List<Activity> activity, List<Whisper> whispers) {
 
     /**

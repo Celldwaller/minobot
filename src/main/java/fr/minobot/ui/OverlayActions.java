@@ -67,6 +67,12 @@ public interface OverlayActions {
      */
     void toggleAutoAcceptTrade(boolean on);
 
+    /** Switches the crosses on the spells cast this fight on or off — the <em>Économe</em> help. */
+    void toggleEconome(boolean on);
+
+    /** Switches the spell bar's setup on or off: its slots framed, so the player can teach them. */
+    void toggleSpellSetup(boolean on);
+
     /**
      * Brings up the character a whisper was sent to, so the player can answer it — the panel's version of
      * the click the toast offered before it faded.

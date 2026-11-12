@@ -3,11 +3,13 @@ package fr.minobot.app;
 import fr.minobot.core.*;
 import fr.minobot.core.KeyboardMonitor.Binding;
 import fr.minobot.core.input.InputSimulator;
+import fr.minobot.core.vision.ChatLog;
 import fr.minobot.core.vision.RememberingTextReader;
 import fr.minobot.core.vision.RequestDialog;
 import fr.minobot.core.vision.ScreenReader;
 import fr.minobot.core.vision.ScreenWatcher;
 import fr.minobot.core.vision.TurnBanner;
+import fr.minobot.feature.econome.SpellMarks;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.AutoPassBanner;
 import fr.minobot.feature.notification.ExchangeAccepter;
@@ -23,6 +25,7 @@ import fr.minobot.feature.window.MultiWindowClicker;
 import fr.minobot.feature.window.WindowCycler;
 import fr.minobot.feature.window.WindowReorder;
 import fr.minobot.ui.banner.SwingBanner;
+import fr.minobot.ui.marks.SwingMarks;
 import fr.minobot.ui.overlay.SwingOverlay;
 import fr.minobot.ui.toast.SwingToastStack;
 import fr.minobot.win32.User32;
@@ -112,13 +115,26 @@ public final class MinobotApp {
         // alone: the game's toast goes deaf on a window the multi-click has posted to, the screen does not.
         final var fightTurns = new FightTurns();
         final var requests = new Requests();
+
+        // What each character cast this fight, read off the fight log in the chat of the first character —
+        // at every look, since a spell that hits five fighters scrolls its line away within the second —
+        // and whether the spell bar of the character the player is on is there to be marked.
+        final var fightLog = new FightLog();
+        final var spellUsage = new SpellUsage(fightLog, fightTurns);
+        final var spellBars = new SpellBars();
+
         this.ocr = WindowsOcr.start();
         if (ocr.isEmpty()) {
-            log.warn("No Windows OCR language for this user: turns and requests will not be heard.");
+            log.warn("No Windows OCR language for this user: turns, requests and casts will not be heard.");
         }
         this.screenWatcher = ocr.map(reader -> new ScreenWatcher(api, windowManager, List.of(
-                ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns),
-                ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests)),
+                        ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns),
+                        ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests)),
+                List.of(new ScreenWatcher.Pinned(characters -> characters.stream().findFirst(),
+                                ScreenReader.fightLog(new ChatLog(reader), fightLog, fightTurns::inFight)),
+                        new ScreenWatcher.Pinned(characters -> characters.stream()
+                                .filter(window -> window.hwnd() == api.foregroundWindow()).findFirst(),
+                                ScreenReader.spellBar(spellBars))),
                 fightTurns::inFight, requests::awaited));
 
         this.multiClicker = new MultiWindowClicker(
@@ -129,6 +145,12 @@ public final class MinobotApp {
                 windowManager, inputSimulator, focusManager, requests, activityLog);
         this.overlay = new OverlayController(api, windowManager, settings, keyboardMonitor, focusManager,
                 activityLog, whisperLog, SwingOverlay::new);
+
+        // Crosses out the spells each character cast this fight, for the Économe challenge, and learns
+        // which slot holds which spell while the player sets the bar up. Both are switches on the panel.
+        new SpellMarks(api, windowManager, settings, fightTurns, fightLog, spellUsage, spellBars,
+                new SpellLayouts(baseDirectory.resolve("spell-layouts.json")), activityLog, overlay::isShowing,
+                SwingMarks::new);
 
         // Answers a trade between two of the player's own characters in place. Built before the
         // request auto-focus so it can consult it and stand aside for the trades it takes.

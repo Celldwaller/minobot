@@ -1,6 +1,6 @@
 # UI
 
-`ui/` holds interfaces and data only; Swing lives in `components/`, `overlay/`, `toast/` and `banner/`,
+`ui/` holds interfaces and data only; Swing lives in `components/`, `overlay/`, `toast/`, `banner/` and `marks/`,
 and nowhere else. Every Swing surface obeys:
 
 - **Never take the foreground**: `setFocusableWindowState(false)`, which is enough — do not add

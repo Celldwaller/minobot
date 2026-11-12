@@ -134,4 +134,21 @@ class FightTurnsTest {
 
         assertThat(told).containsExactly("Bravo");
     }
+
+    @Test
+    @DisplayName("a fight begins at the first turn after a silence, and is told once, before that turn")
+    void tellsWhenAFightBegins() {
+        final var told = new CopyOnWriteArrayList<String>();
+        final var fights = new FightTurns(Runnable::run, now::get);
+        fights.onFightStart(() -> told.add("fight"));
+        fights.onTurn(told::add);
+
+        fights.report("Alpha");
+        elapse(3000);
+        fights.report("Bravo");
+        elapse(FightTurns.FIGHT_GOES_ON.toMillis());
+        fights.report("Alpha");
+
+        assertThat(told).containsExactly("fight", "Alpha", "Bravo", "fight", "Alpha");
+    }
 }

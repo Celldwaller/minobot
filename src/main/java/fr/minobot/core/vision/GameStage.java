@@ -16,10 +16,13 @@ record GameStage(double scale, double left, double top) {
     static final int HEIGHT = 556;
 
     static GameStage of(Frame frame) {
-        final var scale = Math.min((double) frame.width() / WIDTH, (double) frame.height() / HEIGHT);
-        return new GameStage(scale,
-                (frame.width() - WIDTH * scale) / 2,
-                (frame.height() - HEIGHT * scale) / 2);
+        return of(frame.width(), frame.height());
+    }
+
+    /** The stage of a client area this wide and high — a window's, when there is no frame of it at hand. */
+    static GameStage of(int width, int height) {
+        final var scale = Math.min((double) width / WIDTH, (double) height / HEIGHT);
+        return new GameStage(scale, (width - WIDTH * scale) / 2, (height - HEIGHT * scale) / 2);
     }
 
     /** The frame column of a stage abscissa. */
@@ -30,6 +33,16 @@ record GameStage(double scale, double left, double top) {
     /** The frame row of a stage ordinate. */
     int y(double stageY) {
         return (int) Math.round(top + stageY * scale);
+    }
+
+    /** The stage abscissa of a frame column. */
+    double stageX(double frameX) {
+        return (frameX - left) / scale;
+    }
+
+    /** The stage ordinate of a frame row. */
+    double stageY(double frameY) {
+        return (frameY - top) / scale;
     }
 
     /** A stage length, in frame pixels. */

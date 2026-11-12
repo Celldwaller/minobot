@@ -85,7 +85,7 @@ class ScreenWatcherTest {
     }
 
     @Test
-    @DisplayName("a look every 250 ms out of a fight, every 100 ms in one")
+    @DisplayName("a look every 250 ms out of a fight, every 50 ms in one")
     void looksFasterInAFight() {
         final var api = threeCharacters();
         final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
@@ -159,5 +159,24 @@ class ScreenWatcherTest {
         watching(new FakeWindowApi(), recorder).look();
 
         assertThat(read).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a pinned reader reads its window at every look, whichever window the round is at")
+    void readsAPinnedWindowAtEveryLook() {
+        final var api = threeCharacters();
+        final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
+        final var pinned = new CopyOnWriteArrayList<String>();
+        final var watcher = new ScreenWatcher(api, windows, List.of(recorder),
+                List.of(new ScreenWatcher.Pinned(characters -> characters.stream().findFirst(),
+                        (window, _, _) -> pinned.add(window.name()))),
+                () -> true, () -> Win32.NULL_HANDLE);
+
+        for (var look = 0; look < 3; look++) {
+            watcher.look();
+        }
+
+        assertThat(read).containsExactly("Alpha", "Bravo", "Delta");
+        assertThat(pinned).containsExactly("Alpha", "Alpha", "Alpha");
     }
 }
