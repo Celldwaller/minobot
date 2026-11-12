@@ -17,16 +17,18 @@ import java.util.function.LongSupplier;
 
 /**
  * Looks at the characters' windows, one per {@link #POLL} — one per {@link #FIGHT_POLL} during a fight —
- * in turn, and hands each capture to every {@link ScreenReader}.
+ * in turn, and hands each frame to every {@link ScreenReader}.
  *
  * <p>In turn, because what is read is not all in the same place. The banner that opens a fight turn is
  * drawn in every window, so it is caught at every look, whichever window it is — four to ten times over
  * the second it stands. A request is drawn only in the window of the character asked, and stays until it is
  * answered, so it is caught once the round comes to that window: a second for four characters.
  *
- * <p>One capture a look, whatever the number of readers: a capture is the cost (about 20 ms of a 2560
- * px window, measured: see {@link LookTimes}), and the readers check a few pixels before they ask the OCR anything. A window that cannot
- * be captured — minimized — gives its look to the next one.
+ * <p>One frame a look, whatever the number of readers, each of which copies out the one region it reads
+ * and checks a few pixels of it before it asks the OCR anything. The frame is the compositor's, already
+ * drawn: taking it costs about 0.2 ms and a region 0.3 ms, where having a 2560 px window paint itself
+ * cost 20 (measured: see {@link LookTimes}). A window that cannot be read — minimized — gives its look to
+ * the next one.
  */
 public final class ScreenWatcher {
 
@@ -37,8 +39,8 @@ public final class ScreenWatcher {
     /**
      * The pace while a fight goes on. A turn is only heard of once a look catches its banner, so half a
      * pace is what every auto-pass waits on average before anything else; out of a fight, a request box
-     * stays until answered and the slower pace is enough. A capture costs about 25 ms in game: the
-     * watching thread is busy a quarter of the fight.
+     * stays until answered and the slower pace is enough. A look costs about a millisecond: the
+     * watching thread is idle almost all of the fight.
      */
     static final Duration FIGHT_POLL = Duration.ofMillis(100);
 
@@ -80,7 +82,7 @@ public final class ScreenWatcher {
     }
 
     /**
-     * Starts watching on a platform thread: every look is a native capture, and a native call pins a
+     * Starts watching on a platform thread: every look is a native call, and a native call pins a
      * virtual thread's carrier for its whole length.
      */
     public void start() {
@@ -156,15 +158,15 @@ public final class ScreenWatcher {
         }
     }
 
-    /** Whether the window could be captured, and so was read. */
+    /** Whether the window's frame could be had, and so was read. */
     private boolean lookAt(GameWindow window) {
         final var start = System.nanoTime();
-        final var capture = api.capture(window.hwnd());
-        if (capture.isEmpty()) {
+        final var frame = api.frame(window.hwnd());
+        if (frame.isEmpty()) {
             return false;
         }
         final var captured = System.nanoTime();
-        readers.forEach(reader -> reader.read(window, capture.get(), start));
+        readers.forEach(reader -> reader.read(window, frame.get(), start));
         times.add(captured - start, System.nanoTime() - captured);
         return true;
     }
@@ -191,7 +193,7 @@ public final class ScreenWatcher {
             slowestCapture = Math.max(slowestCapture, captureNanos);
             slowestReading = Math.max(slowestReading, readingNanos);
             if (looks == REPORTED_EVERY) {
-                log.debug("Over {} looks: capture {} ms on average ({} at worst), reading {} ms ({} at worst).",
+                log.debug("Over {} looks: frame {} ms on average ({} at worst), reading {} ms ({} at worst).",
                         looks, millis(capturing / looks), millis(slowestCapture),
                         millis(reading / looks), millis(slowestReading));
                 looks = 0;

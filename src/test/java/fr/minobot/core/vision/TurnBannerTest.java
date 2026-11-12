@@ -38,6 +38,27 @@ class TurnBannerTest {
     }
 
     @Test
+    @DisplayName("of a frame, only the strip is read, once: a region is a copy off the GPU")
+    void readsOneRegionOffTheFrame() {
+        final var frame = RecordingFrame.of(banner());
+
+        assertThat(new TurnBanner(new FakeTextReader().reading("Alpha")).fighter(frame)).contains("Alpha");
+        assertThat(frame.regions).singleElement().satisfies(region -> {
+            assertThat(region.width()).isEqualTo(1142 - 735);
+            assertThat(region.height()).isEqualTo(129 - 94);
+        });
+    }
+
+    @Test
+    @DisplayName("a frame whose strip cannot be read names nobody, and the OCR is not asked")
+    void readsNothingOfAnUnreadableFrame() {
+        final var reader = new FakeTextReader().reading("Alpha");
+
+        assertThat(new TurnBanner(reader).fighter(RecordingFrame.unreadable(banner()))).isEmpty();
+        assertThat(reader.images()).isEmpty();
+    }
+
+    @Test
     @DisplayName("no banner, no OCR: the engine is not asked to read the map")
     void readsNothingWithoutABanner() {
         final var reader = new FakeTextReader().reading("anything");

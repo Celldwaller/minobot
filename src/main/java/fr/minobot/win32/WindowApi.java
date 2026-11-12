@@ -94,6 +94,18 @@ public interface WindowApi {
     Optional<Capture> capture(long hwnd);
 
     /**
+     * What the window's client area shows right now, to be read a region at a time — empty if the
+     * handle is stale, the window is minimized, or it could not be read.
+     *
+     * <p>Like {@link #capture}, it works on a window behind others. Unlike it, it need not hold the
+     * whole window in memory: {@link User32} reads the compositor's own frames, on the GPU, and copies
+     * out only the regions asked for. Anything else captures the window whole.
+     */
+    default Optional<Frame> frame(long hwnd) {
+        return capture(hwnd).map(Frame.class::cast);
+    }
+
+    /**
      * The window under the given screen point — possibly a child window, hence
      * {@link #parentWindow(long)} to walk back up to the game window.
      */

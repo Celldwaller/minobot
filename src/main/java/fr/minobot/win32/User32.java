@@ -450,6 +450,13 @@ public final class User32 implements WindowApi {
     private final Object surfaceLock = new Object();
 
     /**
+     * Started at the first frame asked for, so an application that reads no screen never makes a GPU
+     * device; empty for good if it could not be. Guarded by {@link #compositorLock}.
+     */
+    private Optional<GraphicsCapture> compositor;
+    private final Object compositorLock = new Object();
+
+    /**
      * Has the window paint its client area into a bitmap of our own, then reads the pixels back.
      *
      * <p>The bitmap is a DIB section — memory we can read directly — laid out top-down (a negative
@@ -489,6 +496,33 @@ public final class User32 implements WindowApi {
             } catch (Throwable t) {
                 throw failure("PrintWindow", t);
             }
+        }
+    }
+
+    /**
+     * The compositor's newest frame of the window ({@link GraphicsCapture}); the window painted whole
+     * ({@link #capture}) when there is none to read — the first look at a window, while its session opens,
+     * or on a Windows that has no {@code Windows.Graphics.Capture}.
+     */
+    @Override
+    public Optional<Frame> frame(long hwnd) {
+        if (isIconic(hwnd)) {
+            return Optional.empty();
+        }
+        final var area = clientArea(hwnd).filter(rect -> rect.width() > 0 && rect.height() > 0);
+        if (area.isEmpty()) {
+            return Optional.empty();
+        }
+        return compositor().flatMap(compositor -> compositor.frame(hwnd, area.get()))
+                .or(() -> capture(hwnd).map(Frame.class::cast));
+    }
+
+    private Optional<GraphicsCapture> compositor() {
+        synchronized (compositorLock) {
+            if (compositor == null) {
+                compositor = GraphicsCapture.start(this::isWindow);
+            }
+            return compositor;
         }
     }
 

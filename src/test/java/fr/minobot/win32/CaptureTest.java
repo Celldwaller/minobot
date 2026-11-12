@@ -49,6 +49,17 @@ class CaptureTest {
     }
 
     @Test
+    @DisplayName("as a frame, a capture's regions are its crops, always read")
+    void readsRegionsAsCrops() {
+        final var capture = new Capture(3, 2, new int[]{
+                1, 2, 3,
+                4, 5, 6});
+
+        assertThat(capture.region(1, 0, 3, 2)).hasValueSatisfying(region ->
+                assertThat(region.pixels()).containsExactly(2, 3, 5, 6));
+    }
+
+    @Test
     void refusesACropOutsideTheCapture() {
         assertThatThrownBy(() -> new Capture(3, 2, new int[6]).crop(1, 0, 4, 2))
                 .isInstanceOf(IndexOutOfBoundsException.class);

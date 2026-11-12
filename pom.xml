@@ -327,6 +327,20 @@
                                         -->
                                         <argument>--java-options</argument>
                                         <argument>${native.access.arg}</argument>
+
+                                        <!--
+                                          A background tool, not a server: left to itself the JVM picks G1
+                                          and a heap of a quarter of the RAM, and keeps what it grew to.
+                                          Measured watching eight windows in a fight, the application
+                                          allocates under 1 MB a second; the serial collector in a heap
+                                          capped at 128 MB, starting at 32, holds it with room to spare.
+                                        -->
+                                        <argument>--java-options</argument>
+                                        <argument>-XX:+UseSerialGC</argument>
+                                        <argument>--java-options</argument>
+                                        <argument>-Xms32m</argument>
+                                        <argument>--java-options</argument>
+                                        <argument>-Xmx128m</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
