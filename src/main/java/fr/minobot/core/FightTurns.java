@@ -56,7 +56,6 @@ public final class FightTurns {
     static final Duration FIGHT_GOES_ON = Duration.ofSeconds(60);
 
     private final List<Consumer<String>> listeners = new CopyOnWriteArrayList<>();
-    private final List<Runnable> fightListeners = new CopyOnWriteArrayList<>();
     private final Executor dispatcher;
     private final LongSupplier nanos;
 
@@ -86,14 +85,6 @@ public final class FightTurns {
         listeners.add(listener);
     }
 
-    /**
-     * Hears of every fight as its first turn is reported — a turn after {@link #FIGHT_GOES_ON} of
-     * silence — before that turn's listeners, and on the reporting thread: a listener only notes it.
-     */
-    public void onFightStart(Runnable listener) {
-        fightListeners.add(listener);
-    }
-
     /** A source saw {@code fighter}'s turn begin — or still saw it going on, or saw it late. */
     public void report(String fighter) {
         report(fighter, nanos.getAsLong());
@@ -115,16 +106,6 @@ public final class FightTurns {
 
     private synchronized boolean begins(String fighter) {
         final var now = nanos.getAsLong();
-        if (!inFight()) {
-            log.debug("A fight begins.");
-            for (final var listener : fightListeners) {
-                try {
-                    listener.run();
-                } catch (RuntimeException e) {
-                    log.error("Error in a fight-start listener.", e);
-                }
-            }
-        }
         lastSighting = now;
         final var seen = lastSeen.get(fighter);
         if (fighter.equals(current)) {

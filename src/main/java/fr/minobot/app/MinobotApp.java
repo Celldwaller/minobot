@@ -121,7 +121,7 @@ public final class MinobotApp {
         // at every look, since a spell that hits five fighters scrolls its line away within the second —
         // and whether the spell bar of the character the player is on is there to be marked.
         final var fightLog = new FightLog();
-        final var spellUsage = new SpellUsage(fightLog, fightTurns);
+        final var spellUsage = new SpellUsage(fightLog);
         final var spellBars = new SpellBars();
 
         this.ocr = WindowsOcr.start();

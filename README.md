@@ -77,8 +77,8 @@ pendant le réglage, lui donne une disposition à lui (il faut lui avoir choisi 
 
 - Un **échec critique** ne compte pas : le sort peut être relancé.
 - Un sort relancé est signalé dans ACTIVITY : « Easyconome: challenge lost ».
-- Les croix s'effacent d'elles-mêmes au combat suivant ; **Reset** les efface à la main si deux combats
-  s'enchaînent à moins d'une minute d'écart.
+- Les croix s'effacent d'elles-mêmes quand le chat annonce « Combat terminé » ; **Reset** les efface à la
+  main si cette ligne n'a pas été lue.
 - Le chat est lu dans la fenêtre du **premier personnage de votre ordre** : il doit être dans le combat,
   avec les messages de combat affichés dans son chat.
 - L'affichage 16:9 du jeu est reconnu, fenêtre par fenêtre.

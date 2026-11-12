@@ -27,6 +27,9 @@ import java.util.regex.Pattern;
  * critical failure — {@code (Échec critique)}, written right under the cast — means the spell was not
  * cast after all ({@link #onFailure}); anything else, that it was ({@link #onSettled}).
  *
+ * <p>The fight's end is a line of its own, {@code Combat terminé (ouvrir l'écran de fin de combat)} — cut in
+ * two by the narrow chat: only its start is matched ({@link #onFightEnd}).
+ *
  * <p>A look after a silence is not compared with the last: the chat is only read during a fight, and what
  * it shows when a fight begins was written before. That look is taken as it stands, and only what comes
  * after it is new.
@@ -48,6 +51,7 @@ public final class FightLog {
     private final List<Consumer<Cast>> listeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Cast>> failureListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Cast>> settledListeners = new CopyOnWriteArrayList<>();
+    private final List<Runnable> endListeners = new CopyOnWriteArrayList<>();
     private final LongSupplier nanos;
 
     /** What the last look read, and when; only the reading thread touches them. */
@@ -85,6 +89,11 @@ public final class FightLog {
         settledListeners.add(listener);
     }
 
+    /** Hears of the fight's end as its line is first read, on the reading thread: a listener only notes it. */
+    public void onFightEnd(Runnable listener) {
+        endListeners.add(listener);
+    }
+
     /** The chat's last lines as a look read them, oldest first. */
     public synchronized void report(List<String> lines) {
         final var now = nanos.getAsLong();
@@ -105,6 +114,11 @@ public final class FightLog {
                 if (failed) {
                     continue;
                 }
+            }
+            if (isEnd(line)) {
+                log.debug("The fight is over.");
+                endListeners.forEach(FightLog::tell);
+                continue;
             }
             final var heard = Cast.in(line);
             if (heard.isEmpty()) {
@@ -132,6 +146,11 @@ public final class FightLog {
         return Cast.key(line).equals("(echec critique)");
     }
 
+    /** {@code Combat terminé (…)} — accents read or not, and whatever the OCR made of the rest. */
+    private static boolean isEnd(String line) {
+        return Cast.key(line).startsWith("combat termine");
+    }
+
     /** The lines of {@code now} that {@code before} did not end with. */
     static List<String> added(List<String> before, List<String> now) {
         for (var kept = Math.min(before.size(), now.size()); kept > 0; kept--) {
@@ -140,6 +159,14 @@ public final class FightLog {
             }
         }
         return now;
+    }
+
+    private static void tell(Runnable listener) {
+        try {
+            listener.run();
+        } catch (RuntimeException e) {
+            log.error("Error in a fight-end listener.", e);
+        }
     }
 
     private static void tell(List<Consumer<Cast>> listeners, Cast cast) {

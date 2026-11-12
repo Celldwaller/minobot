@@ -6,7 +6,6 @@ import fr.minobot.app.Settings;
 import fr.minobot.app.TestConfigs;
 import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FightLog;
-import fr.minobot.core.FightTurns;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.KeyboardMonitor;
 import fr.minobot.core.SpellUsage;
@@ -47,7 +46,7 @@ class OverlayControllerTest {
     private final ActivityLog activity = new ActivityLog();
     private final WhisperLog whispers = new WhisperLog();
     private final FightLog fightLog = new FightLog();
-    private final SpellUsage spells = new SpellUsage(fightLog, new FightTurns());
+    private final SpellUsage spells = new SpellUsage(fightLog);
 
     private OverlayController controller() {
         return controller(new WindowManager(api, settings, activity));
