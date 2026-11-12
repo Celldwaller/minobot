@@ -82,12 +82,12 @@ class ChatLogTest {
     }
 
     @Test
-    @DisplayName("of a frame, the layout's border is read, then the chat, once")
+    @DisplayName("of a frame, the layout's borders are read, then the chat, once")
     void readsOneRegionOffTheFrame() {
         final var frame = RecordingFrame.of(chat(1, 2, 3, 4, 5, 6));
 
         assertThat(new ChatLog(reader).lines(frame)).isPresent();
-        assertThat(frame.regions).hasSize(2).last().satisfies(region -> {
+        assertThat(frame.regions).hasSize(3).last().satisfies(region -> {
             assertThat(region.left()).isEqualTo(410);
             assertThat(region.right()).isEqualTo(1159);
             assertThat(region.top()).isEqualTo(1120);
@@ -111,16 +111,30 @@ class ChatLogTest {
     }
 
     /**
-     * A 16:9 window: the column's border, and its chat's upper pane — beige from x 0 to 347 — its last line
-     * from y 517 to 536 and nine above it every 19.
+     * A 16:9 window: the column's border, and its chat's upper pane — from x 0 to 347 — its last line from
+     * y 517 to 536 and nine above it every 19; a negative offset is a blank line.
      */
     private static Capture wideChat(int... lines) {
-        final var capture = HudTest.wide();
-        paint(capture, 0, 300, 348, 545, BEIGE);
+        return wideChatOn(BEIGE, lines);
+    }
+
+    private static Capture wideChatOn(int background, int... lines) {
+        return wideChat(HudTest.wide(), 0, background, lines);
+    }
+
+    /** The column right of the stage: its pane from x 2199 to 2546. */
+    private static Capture wideChatRight(int... lines) {
+        return wideChat(HudTest.wideChatRight(), 2199, BEIGE, lines);
+    }
+
+    private static Capture wideChat(Capture capture, int x, int background, int... lines) {
+        paint(capture, x, 300, x + 348, 545, background);
         for (var index = 0; index < lines.length; index++) {
             final var top = 517 - 19 * (lines.length - 1 - index);
-            final var left = 4 + 10 * lines[index];
-            paint(capture, left, top + 3, left + 100, top + 15, INK);
+            if (lines[index] >= 0) {
+                final var left = x + 4 + 10 * lines[index];
+                paint(capture, left, top + 3, left + 100, top + 15, INK);
+            }
         }
         return capture;
     }
@@ -132,6 +146,24 @@ class ChatLogTest {
                 .contains(List.of("line 1", "line 2", "line 3", "line 4", "line 5",
                         "line 6", "line 7", "line 8", "line 9", "line 10"));
         assertThat(read).allSatisfy(line -> assertThat(line.height()).isEqualTo(19 + 2 * 20));
+    }
+
+    @Test
+    @DisplayName("the dark chat is read as the light one, its blank lines blank, its margins dark")
+    void readsTheDarkChat() {
+        final var dark = 0x14120D;
+
+        assertThat(new ChatLog(reader).lines(wideChatOn(dark, -1, -1, -1, -1, -1, -1, -1, -1, 1, 2)))
+                .contains(List.of("", "", "", "", "", "", "", "", "line 1", "line 2"));
+        assertThat(read).hasSize(2).allSatisfy(line -> assertThat(line.rgb(0, 0)).isEqualTo(dark));
+    }
+
+    @Test
+    @DisplayName("with the column right of the stage, its chat is read there")
+    void readsTheWideChatOnTheRight() {
+        assertThat(new ChatLog(reader).lines(wideChatRight(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)))
+                .contains(List.of("line 1", "line 2", "line 3", "line 4", "line 5",
+                        "line 6", "line 7", "line 8", "line 9", "line 10"));
     }
 
     @Test

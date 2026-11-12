@@ -6,6 +6,8 @@ import fr.minobot.win32.Rect;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static fr.minobot.core.vision.BannerCaptures.BEIGE;
 import static fr.minobot.core.vision.BannerCaptures.blank;
 import static fr.minobot.core.vision.BannerCaptures.paint;
@@ -62,9 +64,31 @@ class SpellBarTest {
     }
 
     @Test
-    @DisplayName("the slot under a point is the slot drawn there, in either layout, at any size")
+    @DisplayName("the chat right of the stage leaves every slot where it was")
+    void placesTheSlotsWhicheverSideTheChatIs() {
+        for (var slot = 0; slot < SpellBar.slots(Hud.WIDE); slot++) {
+            assertThat(SpellBar.slot(new Hud(Hud.Chat.RIGHT, true), slot, 2560, 1369))
+                    .isEqualTo(SpellBar.slot(Hud.WIDE, slot, 2560, 1369));
+        }
+    }
+
+    @Test
+    @DisplayName("16:9 with the column kept: the 16:9 bar, the column a pixel or two off the classic one")
+    void placesTheKeptColumn() {
+        final var hud = new Hud(Hud.Chat.LEFT, false);
+
+        assertThat(SpellBar.slots(hud)).isEqualTo(23);
+        assertThat(SpellBar.slot(hud, SpellBar.WEAPON, 2560, 1369))
+                .isEqualTo(SpellBar.slot(Hud.WIDE, SpellBar.WEAPON, 2560, 1369));
+        assertThat(SpellBar.slot(hud, 14, 2560, 1369)).isEqualTo(SpellBar.slot(Hud.WIDE, 14, 2560, 1369));
+        assertThat(SpellBar.slot(hud, 15, 2560, 1369)).isEqualTo(new Rect(373, 476, 436, 539));
+        assertThat(SpellBar.slot(hud, 22, 2560, 1369).top()).isEqualTo(959);
+    }
+
+    @Test
+    @DisplayName("the slot under a point is the slot drawn there, in any layout, at any size")
     void findsTheSlotUnderAPoint() {
-        for (final var hud : Hud.values()) {
+        for (final var hud : List.of(Hud.CLASSIC, Hud.WIDE, new Hud(Hud.Chat.LEFT, false))) {
             for (final var size : new int[][]{{2560, 1369}, {1920, 1017}, {1280, 720}}) {
                 for (var slot = 0; slot < SpellBar.slots(hud); slot++) {
                     final var drawn = SpellBar.slot(hud, slot, size[0], size[1]);
