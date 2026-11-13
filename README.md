@@ -21,6 +21,8 @@ place : il reste en fond (icône à côté de l'horloge) et vous évite les mani
 
 Et automatiquement :
 
+- **Chaque fenêtre ouverte depuis le launcher passe en plein écran** (agrandie) dès son apparition, une
+  seule fois : si vous la remettez ensuite en petite fenêtre, Minobot n'y touche plus.
 - **Le bon personnage revient à l'écran** quand c'est son tour en combat, ou quand il est attaqué ou
   invité.
 - **Auto-accept trades** (activé par défaut) : un échange proposé par un de vos propres personnages est
