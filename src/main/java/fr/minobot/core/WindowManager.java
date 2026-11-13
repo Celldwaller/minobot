@@ -63,6 +63,22 @@ public final class WindowManager {
 
     /** Re-enumerates the desktop and keeps the windows whose title carries a game keyword. */
     public synchronized void refresh() {
+        final var fresh = scan();
+        noteWhoLeft(snapshot.getAndSet(new Snapshot(fresh, System.nanoTime())), fresh);
+
+        log.debug("Detected {} game window(s).", fresh.size());
+        for (final var window : fresh) {
+            log.debug("  -> Found: '{}' (HWND: {})", window.title(), window.hwnd());
+        }
+    }
+
+    /**
+     * The game windows on screen right now, in enumeration order — without touching the tracked list.
+     *
+     * <p>For a watcher that sweeps far more often than the list needs refreshing: a refresh also decides
+     * who left, and a window hidden for an instant by the taskbar reorder has not left.
+     */
+    public List<GameWindow> scan() {
         final var found = new ArrayList<GameWindow>();
         for (final var hwnd : api.topLevelWindows()) {
             if (!api.isWindowVisible(hwnd)) {
@@ -73,14 +89,7 @@ public final class WindowManager {
                 found.add(new GameWindow(hwnd, title));
             }
         }
-
-        final var fresh = List.copyOf(found);
-        noteWhoLeft(snapshot.getAndSet(new Snapshot(fresh, System.nanoTime())), fresh);
-
-        log.debug("Detected {} game window(s).", fresh.size());
-        for (final var window : fresh) {
-            log.debug("  -> Found: '{}' (HWND: {})", window.title(), window.hwnd());
-        }
+        return List.copyOf(found);
     }
 
     /**

@@ -21,6 +21,7 @@ import fr.minobot.feature.notification.TurnPasser;
 import fr.minobot.feature.notification.WhisperToaster;
 import fr.minobot.feature.window.MultiWindowClicker;
 import fr.minobot.feature.window.WindowCycler;
+import fr.minobot.feature.window.WindowMaximizer;
 import fr.minobot.feature.window.WindowReorder;
 import fr.minobot.ui.FakeToastView;
 import fr.minobot.win32.FakeWindowApi;
@@ -101,6 +102,10 @@ public final class Features {
 
     public WindowReorder reorder() {
         return new WindowReorder(api, windows, focus, activity);
+    }
+
+    public WindowMaximizer maximizer() {
+        return new WindowMaximizer(api, windows, activity);
     }
 
     public MultiWindowClicker clicker() {

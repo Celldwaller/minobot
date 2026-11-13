@@ -69,6 +69,15 @@ public final class FakeWindowApi implements WindowApi {
         return this;
     }
 
+    /** Destroys a window: its handle no longer designates anything. */
+    public FakeWindowApi close(long hwnd) {
+        titles.remove(hwnd);
+        minimized.remove(hwnd);
+        maximized.remove(hwnd);
+        hidden.remove(hwnd);
+        return this;
+    }
+
     public FakeWindowApi minimize(long hwnd) {
         minimized.add(hwnd);
         return this;
@@ -151,6 +160,7 @@ public final class FakeWindowApi implements WindowApi {
             }
             case Win32.SW_RESTORE -> {
                 minimized.remove(hwnd);
+                maximized.remove(hwnd);
                 hidden.remove(hwnd);
                 markShown(hwnd);
             }
