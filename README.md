@@ -1,11 +1,20 @@
-![minobot.png](assets/minobot.png)
+<p align="center">
+  <img src="assets/minobot.png" alt="Minobot" width="200">
+</p>
 
 # Minobot
 
 Un logiciel de confort pour **Dofus Retro**, pour les joueurs multi-comptes. Il ne joue pas à votre
 place : il reste en fond (icône à côté de l'horloge) et vous évite les manipulations répétitives.
 
-![overlay.png](assets/overlay.png)
+<table>
+  <tr>
+    <td align="center">
+      <img src="assets/overlay.png" alt="L'overlay ouvert sur une fenêtre de jeu"><br>
+      <sub><b>L'overlay</b> (<code>Shift+Espace</code>) — la team dans votre ordre, les interrupteurs, l'activité et les messages privés</sub>
+    </td>
+  </tr>
+</table>
 
 ## Fonctions
 
@@ -41,8 +50,18 @@ Et automatiquement :
 3. **Activez les notifications Windows** (elles peuvent être silencieuses, en cochant
    `Masquer le contenu...`).
 
-![windows_settings1.png](assets/windows_settings1.png)
-![windows_settings2.png](assets/windows_settings2.png)
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/windows_settings1.png" alt="Paramètres Windows, Notifications"><br>
+      <sub><b>Système › Notifications</b> — activez les notifications, puis ouvrez celles du jeu</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/windows_settings2.png" alt="Paramètres des notifications du jeu"><br>
+      <sub><b>Notifications du jeu</b> — activées, avec « Masquer le contenu » pour qu'elles restent discrètes</sub>
+    </td>
+  </tr>
+</table>
 
 > Si Windows affiche « Windows a protégé votre ordinateur », cliquez sur **Informations
 > complémentaires** puis **Exécuter quand même**.
