@@ -14,12 +14,9 @@ import fr.minobot.feature.econome.SpellMarks;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.AutoPassBanner;
 import fr.minobot.feature.notification.ExchangeAccepter;
-import fr.minobot.feature.notification.NotificationListener;
 import fr.minobot.feature.notification.RequestFocuser;
-import fr.minobot.feature.notification.RequestToasts;
 import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
-import fr.minobot.feature.notification.TurnToasts;
 import fr.minobot.feature.notification.WhisperToaster;
 import fr.minobot.feature.overlay.OverlayController;
 import fr.minobot.feature.window.MultiWindowClicker;
@@ -138,7 +135,7 @@ public final class MinobotApp {
                         new ScreenWatcher.Pinned(characters -> characters.stream()
                                 .filter(window -> window.hwnd() == api.foregroundWindow()).findFirst(),
                                 ScreenReader.spellBar(spellBars))),
-                fightTurns::inFight, requests::awaited));
+                requests::awaited));
 
         this.multiClicker = new MultiWindowClicker(
                 api, windowManager, focusManager, flashSuppressor, settings, activityLog);
@@ -162,20 +159,9 @@ public final class MinobotApp {
                 focusManager, requests, settings, activityLog);
 
         // Shows a whisper as a quiet toast at the left of the game rather than pulling the screen to it,
-        // and writes it to the whisper log so the panel can still list it once the card has faded. Also
-        // built before the auto-focus, which stands aside for the whispers it takes.
-        final var whisperToaster = new WhisperToaster(api, windowManager, focusManager, settings,
+        // and writes it to the whisper log so the panel can still list it once the card has faded.
+        new WhisperToaster(api, windowManager, focusManager, settings,
                 notificationManager, whisperLog, SwingToastStack::new);
-
-        // Registers itself with the notification manager; it has no hotkey of its own. It stands aside
-        // for a toast answered elsewhere — a whisper, a turn, a request — and takes the player
-        // everywhere else. The predicate is the OR of those features' claims.
-        new NotificationListener(windowManager, focusManager, notificationManager, activityLog,
-                notification -> whisperToaster.claims(notification) || TurnToasts.claims(notification)
-                        || RequestToasts.claims(notification));
-
-        // A request toast reports nothing, but it comes at once: it points the screen at the window it names.
-        new RequestToasts(windowManager, notificationManager, requests);
 
         // Takes the player to the character something is asked of, unless it is answered in place.
         new RequestFocuser(windowManager, focusManager, requests, activityLog, exchangeAccepter::claims);

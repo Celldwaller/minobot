@@ -32,8 +32,8 @@ Et automatiquement :
 
 - **Chaque fenêtre ouverte depuis le launcher passe en plein écran** (agrandie) dès son apparition, une
   seule fois : si vous la remettez ensuite en petite fenêtre, Minobot n'y touche plus.
-- **Le bon personnage revient à l'écran** quand c'est son tour en combat, ou quand il est attaqué ou
-  invité.
+- **Le bon personnage revient à l'écran** quand c'est son tour en combat, ou quand on lui propose un
+  groupe, un échange ou un défi.
 - **Auto-accept trades** (activé par défaut) : un échange proposé par un de vos propres personnages est
   accepté tout seul. Celui d'un autre joueur ne l'est jamais.
 - **Auto-pass turns** (désactivé par défaut) : passe le tour de **tous** vos personnages. Une pastille
@@ -47,8 +47,8 @@ Et automatiquement :
    [page des versions](https://github.com/AdrienLeblanc/minobot/releases/latest) et décompressez-le où
    vous voulez.
 2. Lancez **`Minobot.exe`**. Rien d'autre à installer.
-3. **Activez les notifications Windows** (elles peuvent être silencieuses, en cochant
-   `Masquer le contenu...`).
+3. **Activez les notifications Windows** du jeu pour recevoir les messages privés en carte (elles
+   peuvent être silencieuses, en cochant `Masquer le contenu...`). C'est leur seul usage.
 
 <table>
   <tr>

@@ -23,8 +23,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>There are two kinds of focus here, and the difference matters. A <em>deliberate</em>
  * {@link #focus(long)} comes from a hotkey: it waits its turn and it reports whether it worked, so a
  * caller that is about to type knows whether the keystrokes will land in the window it asked for. An
- * {@link #focusIfIdle(long)} comes from a toast: it is a convenience, and it stands aside rather than
- * take the screen from under a sequence that is halfway through typing a command.
+ * {@link #focusIfIdle(long)} comes from what the screen shows — a turn, a request: it is a convenience,
+ * and it stands aside rather than take the screen from under a sequence that is halfway through typing a
+ * command.
  *
  * <p>Every step sleeps, so this is meant to be called from a virtual thread (a hotkey callback),
  * never from the polling loop.
@@ -123,7 +124,7 @@ public final class FocusManager {
      * The same focus, but one that yields: it does nothing while a sequence holds the foreground, or
      * while another focus is under way, or in the wake of one.
      *
-     * <p>This is what a toast asks for. It does not queue: by the time it got its turn, the character
+     * <p>This is what a turn or a request seen on screen asks for. It does not queue: by the time it got its turn, the character
      * it is about would be old news anyway.
      *
      * @return whether the window was focused, {@code false} if the request stood aside

@@ -25,14 +25,12 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
- * Turns a private message into a quiet toast instead of a jump — the counterpart of the notification
- * auto-focus for one kind of toast only.
+ * Turns a private message into a quiet toast instead of a jump.
  *
- * <p>The game raises a Windows toast whenever a background character is whispered, and left alone the
- * {@link NotificationListener} would pull the whole screen to them — too much for one line of chat. So
- * this stands in front of that toast: it recognises a whisper by the shape of its message, and rather
- * than move the player it shows a small card at the left edge of the game — who was whispered, by whom,
- * and what they said. The card lives for {@link #TOAST_LIFETIME}, a close cross takes it down early, and
+ * <p>The game raises a Windows toast whenever a background character is whispered — the one game event
+ * still heard from the toasts rather than off the screen. Pulling the whole screen to the receiver would
+ * be too much for one line of chat, so this recognises a whisper by the shape of its message and shows a
+ * small card at the left edge of the game — who was whispered, by whom, and what they said. The card lives for {@link #TOAST_LIFETIME}, a close cross takes it down early, and
  * a click on it brings the receiver up so the player can answer. Several whispers stack.
  *
  * <p><strong>The card fades; the whisper does not.</strong> Every one it raises is first written to the
@@ -121,15 +119,6 @@ public final class WhisperToaster implements ToastActions {
         startFollowing();
     }
 
-    /**
-     * Whether this feature answers the toast in place — read by {@link NotificationListener} so it does
-     * not also jump to the receiver. A pure function of the toast, so both features decide the same
-     * without coordinating: a whisper is toasted here and left alone there.
-     */
-    public boolean claims(Notification notification) {
-        return parse(notification).isPresent();
-    }
-
     @Override
     public void open(String id) {
         final var toast = find(id);
@@ -158,7 +147,7 @@ public final class WhisperToaster implements ToastActions {
      *
      * <p>The receiver is in the title, as every game toast is written; the sender and the line are in the
      * message, in the shape {@link #WHISPER} matches. A game toast whose message is anything else — an
-     * attack, an invitation, a turn, a trade — does not match, and is none of this feature's business.
+     * invitation, a turn, a trade — does not match, and is none of this feature's business.
      */
     private Optional<Parsed> parse(Notification notification) {
         final var title = notification.title();

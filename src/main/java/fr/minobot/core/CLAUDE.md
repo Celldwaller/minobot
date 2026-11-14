@@ -6,7 +6,7 @@ Several threads want the one screen; `FocusManager` arbitrates:
 
 - `focus(hwnd)` — deliberate (a hotkey). Waits its turn and **returns whether the window really holds
   the foreground**: a caller that then types must check it.
-- `focusIfIdle(hwnd)` — opportunistic (a toast, a turn). Stands aside rather than queue.
+- `focusIfIdle(hwnd)` — opportunistic (a turn, a request). Stands aside rather than queue.
 - A feature that focuses **and types** holds `focus.takeOver()` for its whole sequence, or an auto-focus
   lands between two keystrokes.
 

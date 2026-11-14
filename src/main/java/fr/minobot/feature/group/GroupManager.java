@@ -183,7 +183,7 @@ public final class GroupManager {
         // Accepting anyway would press ENTER in a window with no invitation on screen, where it does
         // not accept anything: it opens the chat, and the next step's command is typed into the game.
         log.warn("No invitation seen for '{}' within {}s; the game may not have received the command, "
-                        + "or its window may be minimized with its Windows notifications off.",
+                        + "or its window may be minimized.",
                 confirmation.character(), CONFIRMATION_TIMEOUT.toSeconds());
         return false;
     }

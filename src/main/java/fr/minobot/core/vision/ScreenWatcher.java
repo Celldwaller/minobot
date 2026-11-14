@@ -16,18 +16,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 
 /**
- * Looks at the characters' windows, one per {@link #POLL} — one per {@link #FIGHT_POLL} during a fight —
- * in turn, and hands each frame to every {@link ScreenReader}.
+ * Looks at the characters' windows, one per {@link #POLL}, in turn, and hands each frame to every
+ * {@link ScreenReader}.
  *
  * <p>In turn, because what is read is not all in the same place. The banner that opens a fight turn is
- * drawn in every window, so it is caught at every look, whichever window it is — four to twenty times over
+ * drawn in every window, so it is caught at every look, whichever window it is — twenty times over
  * the second it stands. A request is drawn only in the window of the character asked, and stays until it is
- * answered, so it is caught once the round comes to that window: a second for four characters.
+ * answered, so it is caught once the round comes to that window: 400 ms for eight characters.
  *
  * <p>One frame a window and a look, whatever the number of readers, each of which copies out the one region it reads
  * and checks a few pixels of it before it asks the OCR anything. The frame is the compositor's, already
@@ -44,17 +43,15 @@ public final class ScreenWatcher {
 
     private static final Logger log = LoggerFactory.getLogger(ScreenWatcher.class);
 
-    static final Duration POLL = Duration.ofMillis(250);
-
     /**
-     * The pace while a fight goes on. A turn is only heard of once a look catches its banner, so half a
-     * pace is what every auto-pass waits on average before anything else; and a cast is only heard of
-     * while its line is still in the chat — from the half second of its animation until the damage it
-     * deals pushes it out. Out of a fight, a request box stays until answered and the slower pace is
-     * enough. A look costs one to two milliseconds, its OCR aside: the watching thread is idle almost all
-     * of the fight.
+     * A turn is only heard of once a look catches its banner, so half a pace is what every auto-pass waits
+     * on average before anything else; a cast is only heard of while its line is still in the chat — from
+     * the half second of its animation until the damage it deals pushes it out; and a trade or a duel
+     * started by the player by hand is only heard of once the round reaches the window it is drawn in,
+     * nothing having said where to look. A look costs one to two milliseconds, its OCR aside: the watching
+     * thread is idle almost all of the time, in a fight or not.
      */
-    static final Duration FIGHT_POLL = Duration.ofMillis(50);
+    static final Duration POLL = Duration.ofMillis(50);
 
     /**
      * A reader of one window — chosen at every look among the characters', in the player's order — read
@@ -67,7 +64,6 @@ public final class ScreenWatcher {
     private final WindowManager windows;
     private final List<ScreenReader> readers;
     private final List<Pinned> pinned;
-    private final BooleanSupplier fighting;
     private final LongSupplier awaited;
 
     private final AtomicReference<Thread> thread = new AtomicReference<>();
@@ -82,32 +78,25 @@ public final class ScreenWatcher {
     private final LookTimes times = new LookTimes();
 
     public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers) {
-        this(api, windows, readers, () -> false);
-    }
-
-    public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers,
-                         BooleanSupplier fighting) {
-        this(api, windows, readers, fighting, () -> Win32.NULL_HANDLE);
+        this(api, windows, readers, () -> Win32.NULL_HANDLE);
     }
 
     /**
-     * @param fighting whether a fight goes on, asked before every look
-     * @param awaited  the window a request is awaited on ({@link Win32#NULL_HANDLE} for none), asked
-     *                 before every look
+     * @param awaited the window a request is awaited on ({@link Win32#NULL_HANDLE} for none), asked
+     *                before every look
      */
     public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers,
-                         BooleanSupplier fighting, LongSupplier awaited) {
-        this(api, windows, readers, List.of(), fighting, awaited);
+                         LongSupplier awaited) {
+        this(api, windows, readers, List.of(), awaited);
     }
 
     /** @param pinned the readers of one window each, read at every look */
     public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers, List<Pinned> pinned,
-                         BooleanSupplier fighting, LongSupplier awaited) {
+                         LongSupplier awaited) {
         this.api = api;
         this.windows = windows;
         this.readers = List.copyOf(readers);
         this.pinned = List.copyOf(pinned);
-        this.fighting = fighting;
         this.awaited = awaited;
     }
 
@@ -131,16 +120,15 @@ public final class ScreenWatcher {
     }
 
     /**
-     * A look every {@link #pace()}, the look's own time included: slept after it, a look of 150 ms made
+     * A look every {@link #POLL}, the look's own time included: slept after it, a look of 150 ms made
      * the turn banner read every 400 ms, not every 250.
      */
     private void watch() {
         try {
             while (thread.get() == Thread.currentThread()) {
                 final var start = System.nanoTime();
-                final var pace = pace();
                 lookOnce();
-                final var left = pace.minusNanos(System.nanoTime() - start);
+                final var left = POLL.minusNanos(System.nanoTime() - start);
                 if (left.isPositive()) {
                     Thread.sleep(left);
                 }
@@ -148,10 +136,6 @@ public final class ScreenWatcher {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-    }
-
-    Duration pace() {
-        return fighting.getAsBoolean() || awaited.getAsLong() != Win32.NULL_HANDLE ? FIGHT_POLL : POLL;
     }
 
     /** A look that fails is the next look's to retry — except a bug, which would fail at every look. */
@@ -231,7 +215,7 @@ public final class ScreenWatcher {
 
     /**
      * What the looks cost, summed over {@link #REPORTED_EVERY} of them and logged at debug: a look runs
-     * four to twenty times a second for the whole session, so its price is measured, not assumed — and a
+     * twenty times a second for the whole session, so its price is measured, not assumed — and a
      * line per look would drown the log. A look's frames and readings are summed: the round's window and
      * the pinned ones.
      */

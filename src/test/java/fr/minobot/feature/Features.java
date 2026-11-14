@@ -13,9 +13,7 @@ import fr.minobot.core.WindowManager;
 import fr.minobot.core.input.FakeInput;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.ExchangeAccepter;
-import fr.minobot.feature.notification.NotificationListener;
 import fr.minobot.feature.notification.RequestFocuser;
-import fr.minobot.feature.notification.RequestToasts;
 import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
 import fr.minobot.feature.notification.WhisperToaster;
@@ -29,10 +27,8 @@ import fr.minobot.win32.FakeWindowApi;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import fr.minobot.core.domain.GameWindow;
-import fr.minobot.core.domain.Notification;
 
 /**
  * Wires a feature onto an in-memory desktop, the way {@code MinobotApp} wires it onto the real one.
@@ -116,15 +112,6 @@ public final class Features {
         return new GroupManager(windows, input, focus, requests, activity);
     }
 
-    public NotificationListener notificationListener() {
-        return new NotificationListener(windows, focus, notifications, activity);
-    }
-
-    /** The auto-focus wired to stand aside for whatever the given predicate claims. */
-    public NotificationListener notificationListener(Predicate<Notification> handledSilently) {
-        return new NotificationListener(windows, focus, notifications, activity, handledSilently);
-    }
-
     public WhisperToaster whisperToaster() {
         return new WhisperToaster(api, windows, focus, settings, notifications, whispers,
                 FakeToastView::new);
@@ -169,10 +156,6 @@ public final class Features {
 
     public RequestFocuser requestFocuser() {
         return new RequestFocuser(windows, focus, requests, activity, (_, _) -> false);
-    }
-
-    public RequestToasts requestToasts() {
-        return new RequestToasts(windows, notifications, requests);
     }
 
     /** A character's window on this desktop, as the features know it. */

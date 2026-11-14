@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static fr.minobot.core.vision.BannerCaptures.blank;
@@ -65,36 +64,21 @@ class ScreenWatcherTest {
     }
 
     @Test
-    @DisplayName("a window a request is awaited on is looked at every look, at a fight's pace, and the round then resumes")
+    @DisplayName("a window a request is awaited on is looked at every look, and the round then resumes")
     void looksAtTheAwaitedWindow() {
         final var api = threeCharacters();
         final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
         final var awaited = new AtomicLong(Win32.NULL_HANDLE);
-        final var watcher = new ScreenWatcher(api, windows, List.of(recorder), () -> false, awaited::get);
+        final var watcher = new ScreenWatcher(api, windows, List.of(recorder), awaited::get);
 
         watcher.look();
         awaited.set(3);
-        assertThat(watcher.pace()).isEqualTo(ScreenWatcher.FIGHT_POLL);
         watcher.look();
         watcher.look();
         awaited.set(Win32.NULL_HANDLE);
         watcher.look();
 
         assertThat(read).containsExactly("Alpha", "Delta", "Delta", "Bravo");
-        assertThat(watcher.pace()).isEqualTo(ScreenWatcher.POLL);
-    }
-
-    @Test
-    @DisplayName("a look every 250 ms out of a fight, every 50 ms in one")
-    void looksFasterInAFight() {
-        final var api = threeCharacters();
-        final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
-        final var fighting = new AtomicBoolean();
-        final var watcher = new ScreenWatcher(api, windows, List.of(recorder), fighting::get);
-
-        assertThat(watcher.pace()).isEqualTo(ScreenWatcher.POLL);
-        fighting.set(true);
-        assertThat(watcher.pace()).isEqualTo(ScreenWatcher.FIGHT_POLL);
     }
 
     @Test
@@ -170,7 +154,7 @@ class ScreenWatcherTest {
         final var watcher = new ScreenWatcher(api, windows, List.of(recorder),
                 List.of(new ScreenWatcher.Pinned(characters -> characters.stream().findFirst(),
                         (window, _, _) -> pinned.add(window.name()))),
-                () -> true, () -> Win32.NULL_HANDLE);
+                () -> Win32.NULL_HANDLE);
 
         for (var look = 0; look < 3; look++) {
             watcher.look();
