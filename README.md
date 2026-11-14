@@ -53,7 +53,7 @@ Et automatiquement :
 ## Installation
 
 1. Téléchargez `Minobot-x.y.z.zip` depuis la
-   [page des versions](https://github.com/AdrienLeblanc/minobot/releases/latest) et décompressez-le où
+   [page des versions](https://github.com/Celldwaller/minobot/releases/latest) et décompressez-le où
    vous voulez.
 2. Lancez **`Minobot.exe`**. Rien d'autre à installer.
 3. **Activez les notifications Windows** du jeu pour recevoir les messages privés en carte (elles
