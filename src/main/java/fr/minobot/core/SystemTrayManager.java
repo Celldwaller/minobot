@@ -1,12 +1,20 @@
 package fr.minobot.core;
 
+import fr.minobot.ui.TrayMenuActions;
+import fr.minobot.ui.TrayMenuContent;
+import fr.minobot.ui.TrayMenuView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * The notification-area icon — the counterpart of {@code system_tray.py}.
@@ -16,8 +24,11 @@ import java.io.IOException;
  * application's artwork when a bitmap is shipped — {@code /tray.png} for choice, a square mark made
  * for tiny sizes, else the full {@code /logo.png} — and falls back to a drawn golden M so the tray
  * is never empty, whatever was packaged.
+ *
+ * <p>Its menu is not AWT's {@code PopupMenu}, which Windows draws as its own grey list: either click on
+ * the icon opens a {@link TrayMenuView}, themed like the panel.
  */
-public final class SystemTrayManager {
+public final class SystemTrayManager implements TrayMenuActions {
 
     private static final Logger log = LoggerFactory.getLogger(SystemTrayManager.class);
 
@@ -30,11 +41,23 @@ public final class SystemTrayManager {
     private static final Color BROWN = new Color(0x5D4037);
     private static final Color GOLD = new Color(0xFFD700);
 
+    private final Supplier<TrayMenuContent> content;
+    private final Path folder;
     private final Runnable onQuit;
+    private final TrayMenuView menu;
     private TrayIcon icon;
 
-    public SystemTrayManager(Runnable onQuit) {
+    /**
+     * @param content    what the menu shows, read at each opening
+     * @param folder     the folder {@link #openFolder} opens
+     * @param menuFactory hands the menu its way back in, so neither has to be built before the other
+     */
+    public SystemTrayManager(Supplier<TrayMenuContent> content, Path folder, Runnable onQuit,
+                             Function<TrayMenuActions, TrayMenuView> menuFactory) {
+        this.content = content;
+        this.folder = folder;
         this.onQuit = onQuit;
+        this.menu = menuFactory.apply(this);
     }
 
     /**
@@ -57,7 +80,14 @@ public final class SystemTrayManager {
             final var tray = SystemTray.getSystemTray();
             final var size = tray.getTrayIconSize();
 
-            final var trayIcon = new TrayIcon(buildIcon(size), "Minobot", buildMenu());
+            final var trayIcon = new TrayIcon(buildIcon(size), "Minobot");
+            trayIcon.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseReleased(MouseEvent event) {
+                    // A tray icon's events are in screen coordinates.
+                    menu.show(content.get(), event.getX(), event.getY());
+                }
+            });
             tray.add(trayIcon);
             icon = trayIcon;
 
@@ -71,23 +101,31 @@ public final class SystemTrayManager {
         if (icon == null) {
             return;
         }
+        menu.hide();
         SystemTray.getSystemTray().remove(icon);
         icon = null;
         log.info("System tray icon removed.");
     }
 
-    private PopupMenu buildMenu() {
-        final var header = new MenuItem("Minobot");
-        header.setEnabled(false);
+    @Override
+    public void openFolder() {
+        if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+            log.warn("This desktop cannot open a folder: {}", folder);
+            return;
+        }
+        // Explorer can take its time to come up, and the caller is Swing's thread.
+        Thread.ofVirtual().name("tray-open-folder").start(() -> {
+            try {
+                Desktop.getDesktop().open(folder.toFile());
+            } catch (IOException | IllegalArgumentException e) {
+                log.warn("Could not open {}: {}", folder, e.getMessage());
+            }
+        });
+    }
 
-        final var quit = new MenuItem("Quit");
-        quit.addActionListener(event -> onQuit.run());
-
-        final var menu = new PopupMenu();
-        menu.add(header);
-        menu.addSeparator();
-        menu.add(quit);
-        return menu;
+    @Override
+    public void quit() {
+        onQuit.run();
     }
 
     /**

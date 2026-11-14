@@ -26,7 +26,9 @@ import fr.minobot.feature.window.WindowReorder;
 import fr.minobot.ui.banner.SwingBanner;
 import fr.minobot.ui.marks.SwingMarks;
 import fr.minobot.ui.overlay.SwingOverlay;
+import fr.minobot.ui.TrayMenuContent;
 import fr.minobot.ui.toast.SwingToastStack;
+import fr.minobot.ui.tray.SwingTrayMenu;
 import fr.minobot.win32.User32;
 import fr.minobot.win32.WindowApi;
 import fr.minobot.win32.WindowsOcr;
@@ -103,8 +105,9 @@ public final class MinobotApp {
         this.activityLog = new ActivityLog();
         this.whisperLog = new WhisperLog();
 
-        this.systemTray = new SystemTrayManager(this::stop);
         this.windowManager = new WindowManager(api, settings, activityLog);
+        this.systemTray = new SystemTrayManager(this::trayMenuContent, baseDirectory, this::stop,
+                SwingTrayMenu::new);
         this.inputSimulator = new InputSimulator();
         this.keyboardMonitor = new KeyboardMonitor(api);
         this.focusManager = new FocusManager(api, inputSimulator);
@@ -218,6 +221,12 @@ public final class MinobotApp {
         }
 
         keyboardMonitor.rebind(bindings);
+    }
+
+    private TrayMenuContent trayMenuContent() {
+        final var config = settings.get();
+        return new TrayMenuContent(config.overlayScale(), config.language(), windowManager.windows().size(),
+                config.overlayHotkey());
     }
 
     /** The live configuration: what the overlay reads, and the only thing allowed to change it. */
