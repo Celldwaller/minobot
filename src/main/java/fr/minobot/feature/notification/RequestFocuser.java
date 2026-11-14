@@ -6,6 +6,7 @@ import fr.minobot.core.Requests;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Request;
+import fr.minobot.i18n.Text;
 
 import java.util.function.BiPredicate;
 
@@ -40,11 +41,11 @@ public final class RequestFocuser {
         }
     }
 
-    private static String reason(Request request) {
+    private static Text reason(Request request) {
         return switch (request.kind()) {
-            case GROUP_INVITE -> "group invite from " + request.asker();
-            case TRADE -> "trade from " + request.asker();
-            case DUEL -> "duel from " + request.asker();
+            case GROUP_INVITE -> Text.of("activity.group_invite_from", request.asker());
+            case TRADE -> Text.of("activity.trade_from", request.asker());
+            case DUEL -> Text.of("activity.duel_from", request.asker());
         };
     }
 }

@@ -2,6 +2,7 @@ package fr.minobot.ui.overlay;
 
 import fr.minobot.app.Config;
 import fr.minobot.core.domain.DofusClass;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
 import fr.minobot.ui.OverlayView;
@@ -228,7 +229,7 @@ public final class SwingOverlay implements OverlayView {
         translucentIfSupported();
 
         final var classIcons = new ClassIcons();
-        header = new HeaderBar();
+        header = new HeaderBar(actions);
         team = new TeamCard(actions, classIcons, this::openClassPicker);
         console = new ConsoleCard(actions);
         keybindsDrawer = new KeybindsDrawer(actions, this::redraw, this::closeKeybinds);
@@ -261,7 +262,7 @@ public final class SwingOverlay implements OverlayView {
         card.add(Box.createVerticalStrut(px(Metrics.PADDING)));
         card.add(body(content));
         card.add(Box.createVerticalStrut(px(Metrics.PADDING)));
-        card.add(sizeSlider.build(scale));
+        card.add(sizeSlider.build(scale, content.words()));
         return card;
     }
 
@@ -274,15 +275,16 @@ public final class SwingOverlay implements OverlayView {
 
         row.add(team.build(scale, content));
         row.add(Box.createHorizontalStrut(px(Metrics.GUTTER)));
-        row.add(console.build(scale, content, keybindsButton()));
+        row.add(console.build(scale, content, keybindsButton(content.words())));
         return row;
     }
 
     /** The drawer's switch. It says which way it will go, which is all a chevron is for. */
-    private JButton keybindsButton() {
+    private JButton keybindsButton(Words words) {
+        final var title = words.get("keybinds.title");
         final JButton button = keybindsOpen
-                ? new PrimaryButton(scale, "Keybinds ‹")
-                : new SecondaryButton(scale, "Keybinds ›");
+                ? new PrimaryButton(scale, title + " ‹")
+                : new SecondaryButton(scale, title + " ›");
         button.addActionListener(_ -> {
             keybindsOpen = !keybindsOpen;
             redraw();

@@ -1,5 +1,6 @@
 package fr.minobot.ui.banner;
 
+import fr.minobot.i18n.Language;
 import fr.minobot.ui.BannerActions;
 import fr.minobot.ui.BannerContent;
 import fr.minobot.ui.BannerView;
@@ -72,8 +73,8 @@ public final class SwingBanner implements BannerView {
     private static final int BUTTON_PAD_X = 11;
     private static final int BUTTON_PAD_Y = 4;
 
-    /** What the button says. The one string the view owns: it names its own click, not the feature. */
-    private static final String TURN_OFF = "Turn off";
+    /** What the button says, by key. The one phrase the view owns: it names its own click, not the feature. */
+    private static final String TURN_OFF = "banner.turn_off";
 
     private final BannerActions actions;
 
@@ -186,7 +187,7 @@ public final class SwingBanner implements BannerView {
                 + px(DOT) + px(Metrics.GAP + 4)
                 + heading.stringWidth(content.heading()) + px(Metrics.GAP + 4)
                 + message.stringWidth(content.message()) + px(Metrics.GAP + 4)
-                + button.stringWidth(TURN_OFF) + 2 * px(BUTTON_PAD_X);
+                + button.stringWidth(content.words().get(TURN_OFF)) + 2 * px(BUTTON_PAD_X);
 
         return new Dimension(pillWidth + 2 * px(MARGIN), pillHeight + 2 * px(MARGIN));
     }
@@ -225,7 +226,7 @@ public final class SwingBanner implements BannerView {
      */
     private final class Banner extends JPanel {
 
-        private BannerContent content = new BannerContent(1, "", "");
+        private BannerContent content = new BannerContent(1, Language.FR, "", "");
 
         /** Where the button was last painted, for the mouse to test against; {@code null} until drawn. */
         private Rectangle button;
@@ -290,7 +291,8 @@ public final class SwingBanner implements BannerView {
         private void paintButton(Graphics2D canvas, int x, int top, int pillHeight) {
             canvas.setFont(buttonFont());
             final var metrics = canvas.getFontMetrics();
-            final var width = metrics.stringWidth(TURN_OFF) + 2 * px(BUTTON_PAD_X);
+            final var turnOff = content.words().get(TURN_OFF);
+            final var width = metrics.stringWidth(turnOff) + 2 * px(BUTTON_PAD_X);
             final var height = metrics.getAscent() + metrics.getDescent() + 2 * px(BUTTON_PAD_Y);
 
             button = new Rectangle(x, top + (pillHeight - height) / 2, width, height);
@@ -299,7 +301,7 @@ public final class SwingBanner implements BannerView {
             canvas.fillRoundRect(button.x, button.y, button.width, button.height, height, height);
 
             canvas.setColor(Theme.TEXT);
-            canvas.drawString(TURN_OFF, button.x + px(BUTTON_PAD_X),
+            canvas.drawString(turnOff, button.x + px(BUTTON_PAD_X),
                     button.y + px(BUTTON_PAD_Y) + metrics.getAscent());
         }
 

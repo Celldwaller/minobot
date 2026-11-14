@@ -17,6 +17,8 @@ import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.Sex;
 import fr.minobot.core.domain.Whisper;
 import fr.minobot.core.input.FakeInput;
+import fr.minobot.i18n.Language;
+import fr.minobot.i18n.Text;
 import fr.minobot.ui.CharacterEntry;
 import fr.minobot.ui.FakeOverlayView;
 import fr.minobot.win32.FakeWindowApi;
@@ -448,6 +450,22 @@ class OverlayControllerTest {
         }
 
         @Test
+        @DisplayName("the panel opens in French, and the selector redraws it in the language picked")
+        void changesTheLanguage() {
+            api.withForeground(1);
+            final var controller = controller();
+            controller.toggle();
+            assertThat(view.content().orElseThrow().language()).as("French by default").isEqualTo(Language.FR);
+
+            controller.changeLanguage(Language.EN);
+
+            assertThat(settings.get().language()).isEqualTo(Language.EN);
+            assertThat(view.content().orElseThrow().language())
+                    .as("the view is told at once: nothing else would redraw it")
+                    .isEqualTo(Language.EN);
+        }
+
+        @Test
         @DisplayName("the auto-pass switch lands in the live configuration, and the panel shows it")
         void togglesAutoPassTurn() {
             api.withForeground(1);
@@ -699,14 +717,14 @@ class OverlayControllerTest {
         @DisplayName("the panel shows what the features noted, newest first")
         void showsTheActivity() {
             api.withForeground(1);
-            activity.record("Taskbar reordered", "3 characters");
-            activity.record("Switched to Bravo", "next");
+            activity.record(Text.of("activity.taskbar_reordered"), Text.of("activity.characters", 3));
+            activity.record(Text.of("activity.switched", "Bravo"), Text.of("activity.next"));
 
             controller().toggle();
 
             assertThat(view.content().orElseThrow().activity())
                     .extracting(Activity::what)
-                    .containsExactly("Switched to Bravo", "Taskbar reordered");
+                    .containsExactly(Text.of("activity.switched", "Bravo"), Text.of("activity.taskbar_reordered"));
         }
 
         @Test
@@ -750,7 +768,7 @@ class OverlayControllerTest {
             assertThat(spells.of("Alpha")).isEmpty();
             assertThat(view.content().orElseThrow().activity())
                     .extracting(Activity::what)
-                    .first().isEqualTo("Easyconome reset");
+                    .first().isEqualTo(Text.of("activity.econome_reset"));
         }
 
         @Test

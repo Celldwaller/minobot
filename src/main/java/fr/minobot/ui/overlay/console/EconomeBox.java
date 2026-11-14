@@ -1,5 +1,6 @@
 package fr.minobot.ui.overlay.console;
 
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
 import fr.minobot.ui.Theme;
@@ -32,12 +33,15 @@ public final class EconomeBox {
 
     /** @param width the column it heads — the box keeps it whichever way its switches are set */
     public JComponent build(Scale scale, OverlayContent content, int width) {
-        final var reset = new SecondaryButton(scale, "Reset");
+        final var words = content.words();
+        final var reset = new SecondaryButton(scale, words.get("econome.reset"));
         reset.addActionListener(_ -> actions.resetEconome());
         final var controls = new JPanel(new FlowLayout(FlowLayout.LEFT, scale.px(Metrics.GAP), 0));
         controls.setOpaque(false);
-        controls.add(StatePill.of(scale, "Easyconome", content.econome(), actions::toggleEconome));
-        controls.add(StatePill.of(scale, "Setup", content.spellSetup(), actions::toggleSpellSetup));
+        controls.add(StatePill.of(scale, words, words.get("econome.switch"), content.econome(),
+                actions::toggleEconome));
+        controls.add(StatePill.of(scale, words, words.get("econome.setup"), content.spellSetup(),
+                actions::toggleSpellSetup));
         controls.add(reset);
 
         final var box = Card.column(scale, Theme.ROW_QUIET);

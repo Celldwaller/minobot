@@ -1,5 +1,7 @@
 package fr.minobot.ui.toast;
 
+import fr.minobot.i18n.Language;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.Theme;
 import fr.minobot.ui.ToastActions;
 import fr.minobot.ui.ToastContent;
@@ -71,8 +73,8 @@ public final class SwingToastStack implements ToastView {
     /** The close cross in a card's corner: the mouse's way to take one down early. */
     private static final int CLOSE_SIZE = 14;
 
-    /** What the header says a card is, after the name of the character it reached. */
-    private static final String HEADER_SUFFIX = " · MESSAGE";
+    /** What the header says a card is, around the name of the character it reached — a key. */
+    private static final String HEADER = "toast.header";
 
     private final ToastActions actions;
 
@@ -83,6 +85,9 @@ public final class SwingToastStack implements ToastView {
     /** What every size on the cards was computed with, and where the stack was last hung. */
     private Scale scale;
     private Rect anchor;
+
+    /** The frame's words, in the language of the last draw. Touched on the event dispatch thread only. */
+    private Words words = Words.in(Language.FR);
 
     /** Read from the follow thread, so it cannot live inside Swing. */
     private volatile boolean visible;
@@ -135,6 +140,7 @@ public final class SwingToastStack implements ToastView {
         }
 
         this.scale = new Scale(content.scale());
+        this.words = content.words();
         this.anchor = anchor;
         stack.setCards(content.cards());
 
@@ -273,7 +279,7 @@ public final class SwingToastStack implements ToastView {
                     Metrics.BADGE_TRACKING));
             var y = bounds.y + px(PADDING) + canvas.getFontMetrics().getAscent();
             canvas.drawString(Draw.elide(canvas.getFontMetrics(),
-                            (card.receiver() + HEADER_SUFFIX).toUpperCase(Locale.ROOT),
+                            words.get(HEADER, card.receiver()).toUpperCase(Locale.ROOT),
                             textRight - textLeft),
                     textLeft, y);
 

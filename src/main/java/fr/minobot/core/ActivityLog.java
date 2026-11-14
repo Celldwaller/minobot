@@ -1,6 +1,7 @@
 package fr.minobot.core;
 
 import fr.minobot.core.domain.Activity;
+import fr.minobot.i18n.Text;
 
 import java.time.Clock;
 import java.util.ArrayDeque;
@@ -43,12 +44,12 @@ public final class ActivityLog {
     }
 
     /**
-     * Notes one act. Both strings are already in the player's words: this puts no sentence together.
+     * Notes one act, not yet in words: the panel phrases it in the language the player reads it in.
      *
-     * @param what   the act, told of characters — {@code "Passed Bravo's turn"}
+     * @param what   the act, told of characters — {@code Text.of("activity.turn_passed", "Bravo")}
      * @param detail the circumstance behind it, or blank when the act speaks for itself
      */
-    public void record(String what, String detail) {
+    public void record(Text what, Text detail) {
         final var entry = new Activity(clock.instant(), what, detail);
         synchronized (entries) {
             if (entries.size() == CAPACITY) {
@@ -59,8 +60,8 @@ public final class ActivityLog {
     }
 
     /** The same, for an act whose circumstance would only repeat it. */
-    public void record(String what) {
-        record(what, "");
+    public void record(Text what) {
+        record(what, Text.NONE);
     }
 
     /**

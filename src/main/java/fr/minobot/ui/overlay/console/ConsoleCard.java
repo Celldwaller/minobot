@@ -79,7 +79,7 @@ public final class ConsoleCard {
         final var left = Card.plainColumn().pinnedTo(width);
         left.add(econome.build(scale, content, width));
         left.add(Box.createVerticalStrut(scale.px(Metrics.GUTTER)));
-        left.add(activity.build(scale, content.activity()));
+        left.add(activity.build(scale, content.words(), content.activity()));
 
         final var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
@@ -90,7 +90,7 @@ public final class ConsoleCard {
         row.add(Box.createHorizontalStrut(scale.px(Metrics.GUTTER)));
         row.add(Divider.vertical(scale));
         row.add(Box.createHorizontalStrut(scale.px(Metrics.GUTTER)));
-        row.add(whispers.build(scale, content.whispers(), left.getPreferredSize().height));
+        row.add(whispers.build(scale, content.words(), content.whispers(), left.getPreferredSize().height));
         return row;
     }
 }

@@ -2,6 +2,7 @@ package fr.minobot.core;
 
 import fr.minobot.app.Settings;
 import fr.minobot.core.domain.GameWindow;
+import fr.minobot.i18n.Text;
 import fr.minobot.win32.Win32;
 import fr.minobot.win32.WindowApi;
 import org.slf4j.Logger;
@@ -111,7 +112,8 @@ public final class WindowManager {
                 .filter(GameWindow::hasCharacterName)
                 .map(GameWindow::name)
                 .filter(name -> !stillHere.contains(name))
-                .forEach(name -> activity.record(name + "'s window closed", "kept in order"));
+                .forEach(name -> activity.record(Text.of("activity.window_closed", name),
+                        Text.of("activity.kept_in_order")));
     }
 
     /** Whether a title is the game's — a window's, or a toast's, which carry the same keywords. */

@@ -1,6 +1,7 @@
 package fr.minobot.ui.overlay;
 
 import fr.minobot.app.Config;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.Theme;
 import fr.minobot.ui.components.buttons.FlatSlider;
@@ -41,7 +42,7 @@ public final class SizeSlider {
         this.actions = actions;
     }
 
-    public JPanel build(Scale scale) {
+    public JPanel build(Scale scale, Words words) {
         final var percent = new JLabel(percentage(scale.factor()) + "%");
         percent.setForeground(Theme.GHOST);
         percent.setFont(scale.font(Fonts.MONO, Metrics.SMALL));
@@ -66,7 +67,7 @@ public final class SizeSlider {
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setMaximumSize(new Dimension(
                 scale.px(TRACK_WIDTH) + scale.px(3 * Metrics.PADDING), scale.px(Metrics.ROW)));
-        row.add(new Caption(scale, "Size"), BorderLayout.WEST);
+        row.add(new Caption(scale, words.get("size.caption")), BorderLayout.WEST);
         row.add(slider, BorderLayout.CENTER);
         row.add(percent, BorderLayout.EAST);
         return row;

@@ -1,5 +1,6 @@
 package fr.minobot.ui.overlay.characters;
 
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.CharacterEntry;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
@@ -50,12 +51,13 @@ public final class CharacterList {
     }
 
     /**
+     * @param words      the player's language, for what a row says besides a name
      * @param innerWidth the card's content width in pixels
      */
-    public JComponent build(Scale scale, int innerWidth) {
+    public JComponent build(Scale scale, Words words, int innerWidth) {
         this.scale = scale;
         table = new SmartTable<>(model, scale, innerWidth, ROW_HEIGHT,
-                new CharacterRow(scale, classIcons), this::reorder, this::onRowClick);
+                new CharacterRow(scale, words, classIcons), this::reorder, this::onRowClick);
         return table;
     }
 

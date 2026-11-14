@@ -4,6 +4,7 @@ import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
+import fr.minobot.i18n.Text;
 import fr.minobot.win32.WindowApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,7 @@ public final class WindowCycler {
 
         log.debug("Cycling {} to '{}'.", direction, character.name());
         if (focus.focus(character.hwnd())) {
-            activity.record("Switched to " + character.name(), direction.toString());
+            activity.record(Text.of("activity.switched", character.name()), direction.said());
         }
     }
 
@@ -93,6 +94,11 @@ public final class WindowCycler {
                 return this == NEXT ? 0 : size - 1;
             }
             return Math.floorMod(played + step, size);
+        }
+
+        /** How the activity list tells which way the player went. */
+        Text said() {
+            return Text.of(this == NEXT ? "activity.next" : "activity.previous");
         }
 
         @Override

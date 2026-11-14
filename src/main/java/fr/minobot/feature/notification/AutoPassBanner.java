@@ -3,6 +3,7 @@ package fr.minobot.feature.notification;
 import fr.minobot.app.Config;
 import fr.minobot.app.Settings;
 import fr.minobot.core.WindowManager;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.BannerActions;
 import fr.minobot.ui.BannerContent;
 import fr.minobot.ui.BannerView;
@@ -43,9 +44,9 @@ public final class AutoPassBanner implements BannerActions {
 
     private static final Logger log = LoggerFactory.getLogger(AutoPassBanner.class);
 
-    /** What the banner says. UI text, so it is the controller's — the view draws what it is handed. */
-    static final String HEADING = "AUTO-PASS TURNS";
-    static final String MESSAGE = "every character passes";
+    /** What the banner says, by key. UI text, so it is the controller's — the view draws what it is handed. */
+    static final String HEADING = "banner.auto_pass.heading";
+    static final String MESSAGE = "banner.auto_pass.message";
 
     /** How often the banner checks it is still on the foreground game window. */
     private static final Duration FOLLOW_INTERVAL = Duration.ofMillis(30);
@@ -158,7 +159,9 @@ public final class AutoPassBanner implements BannerActions {
 
     /** What the banner shows, read fresh: what is running, at the scale the panel is drawn at. */
     private BannerContent content() {
-        return new BannerContent(settings.get().overlayScale(), HEADING, MESSAGE);
+        final var config = settings.get();
+        final var words = Words.in(config.language());
+        return new BannerContent(config.overlayScale(), config.language(), words.get(HEADING), words.get(MESSAGE));
     }
 
     /** @return whether the follower may go on; {@code false} means the thread was interrupted */

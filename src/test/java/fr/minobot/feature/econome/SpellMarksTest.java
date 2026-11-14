@@ -13,6 +13,9 @@ import fr.minobot.core.domain.Activity;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.vision.Hud;
 import fr.minobot.core.vision.SpellBar;
+import fr.minobot.i18n.Language;
+import fr.minobot.i18n.Text;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.FakeMarksView;
 import fr.minobot.ui.MarksContent;
 import fr.minobot.ui.MarksContent.Kind;
@@ -39,6 +42,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SpellMarksTest {
 
     private static final int LEFT_BUTTON = 0x01;
+
+    /** What the marks are phrased in: the language every session opens in. */
+    private static final Words FRENCH = Words.in(Language.FR);
 
     @TempDir
     Path folder;
@@ -130,7 +136,7 @@ class SpellMarksTest {
         marks.tick();
 
         assertThat(drawn(Kind.USED)).extracting(Mark::slot).containsExactly(slot(3));
-        assertThat(view.content().orElseThrow().hint()).isEqualTo(SpellMarks.UNPLACED_HINT.formatted("Flèche Explosive"));
+        assertThat(view.content().orElseThrow().hint()).isEqualTo(FRENCH.get(SpellMarks.UNPLACED_HINT, "Flèche Explosive"));
     }
 
     @Test
@@ -168,7 +174,7 @@ class SpellMarksTest {
         assertThat(drawn(Kind.KNOWN)).extracting(Mark::slot).containsExactly(slot(SpellBar.WEAPON), slot(3));
         assertThat(content.marks()).filteredOn(mark -> !mark.label().isEmpty())
                 .singleElement().satisfies(mark -> assertThat(mark.label()).isEqualTo("Flèche d'Expiation"));
-        assertThat(content.hint()).isEqualTo(SpellMarks.SETUP_HINT.formatted("Foxtrot", "Foxtrot"));
+        assertThat(content.hint()).isEqualTo(FRENCH.get(SpellMarks.SETUP_HINT, "Foxtrot", "Foxtrot"));
     }
 
     @Test
@@ -220,7 +226,7 @@ class SpellMarksTest {
         cast("Bouftou lance Morsure.");
 
         assertThat(activity.recent()).extracting(Activity::detail)
-                .containsExactly("Foxtrot cast Flèche d'Expiation twice");
+                .containsExactly(Text.of("activity.cast_twice", "Foxtrot", "Flèche d'Expiation"));
     }
 
     /** Until the lesson is written: the file is moved into place last, and the folder is deleted after the test. */
@@ -268,7 +274,7 @@ class SpellMarksTest {
         barUp();
 
         marks.tick();
-        assertThat(view.content().orElseThrow().action()).isEqualTo(SpellMarks.OWN_LAYOUT);
+        assertThat(view.content().orElseThrow().action()).isEqualTo(FRENCH.get(SpellMarks.OWN_LAYOUT));
 
         marks.act();
         for (var tries = 0; tries < 200 && !layouts.hasOwn("Foxtrot"); tries++) {
@@ -276,8 +282,8 @@ class SpellMarksTest {
         }
         awaitWritten();
         marks.tick();
-        assertThat(view.content().orElseThrow().action()).isEqualTo(SpellMarks.CLASS_LAYOUT);
-        assertThat(view.content().orElseThrow().hint()).isEqualTo(SpellMarks.SETUP_HINT.formatted("Foxtrot", "Foxtrot"));
+        assertThat(view.content().orElseThrow().action()).isEqualTo(FRENCH.get(SpellMarks.CLASS_LAYOUT));
+        assertThat(view.content().orElseThrow().hint()).isEqualTo(FRENCH.get(SpellMarks.SETUP_HINT, "Foxtrot", "Foxtrot"));
     }
 
     @Test

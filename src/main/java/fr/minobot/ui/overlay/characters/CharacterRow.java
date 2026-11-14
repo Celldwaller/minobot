@@ -1,6 +1,7 @@
 package fr.minobot.ui.overlay.characters;
 
 import fr.minobot.core.domain.Character;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.CharacterEntry;
 import fr.minobot.ui.OverlayContent;
 import fr.minobot.ui.Theme;
@@ -47,14 +48,12 @@ public final class CharacterRow extends DefaultListCellRenderer {
     /** The vertical breathing room between one row's tile and the next. */
     private static final int INSET = 2;
 
-    /** What a character with no class pinned offers instead of a class. */
-    private static final String NO_CLASS = "Pick a class";
-
     /** How much of a disconnected character's portrait is left — enough to recognise, not to read first. */
     private static final float DIMMED = 0.45f;
 
     /** Captured at build, and never changing under a row already on screen — the surface rebuilds instead. */
     private final Scale scale;
+    private final Words words;
     private final ClassIcons classIcons;
 
     /** Never {@code getBackground()}: with none of its own, a component answers with its parent's. */
@@ -69,8 +68,9 @@ public final class CharacterRow extends DefaultListCellRenderer {
     /** Whether their game window is open: the stripe, the shade of everything, and the dot all read it. */
     private boolean connected = true;
 
-    public CharacterRow(Scale scale, ClassIcons classIcons) {
+    public CharacterRow(Scale scale, Words words, ClassIcons classIcons) {
         this.scale = scale;
+        this.words = words;
         this.classIcons = classIcons;
     }
 
@@ -128,13 +128,14 @@ public final class CharacterRow extends DefaultListCellRenderer {
         // The login placeholder is a window with no character yet: it has no name to give a class to, no
         // status of its own and nothing to forget, so the columns to the right of the index stay empty.
         if (character.name().equals(OverlayContent.LOGGING_IN)) {
-            paintName(canvas, columns, columns.iconX, columns.classX - columns.iconX);
+            paintName(canvas, columns, words.get("character.logging_in"), columns.iconX,
+                    columns.classX - columns.iconX);
             canvas.dispose();
             return;
         }
 
         paintIcon(canvas, columns);
-        paintName(canvas, columns, columns.nameX, columns.nameWidth);
+        paintName(canvas, columns, character.name(), columns.nameX, columns.nameWidth);
         paintClass(canvas, columns);
         paintStatus(canvas, columns);
 
@@ -192,12 +193,12 @@ public final class CharacterRow extends DefaultListCellRenderer {
      * The name, elided if too long so it stays inside its cell instead of running into the class beside
      * it. A disconnected character is dimmed — still legible, plainly not playing right now.
      */
-    private void paintName(Graphics2D canvas, RowColumns columns, int x, int width) {
+    private void paintName(Graphics2D canvas, RowColumns columns, String name, int x, int width) {
         final var font = scale.font(connected ? Fonts.SEMIBOLD : Fonts.MEDIUM, Metrics.BODY);
         canvas.setFont(font);
         canvas.setColor(connected ? Theme.TEXT : Theme.FAINT);
         final var fm = canvas.getFontMetrics();
-        canvas.drawString(Draw.elide(fm, character.name(), width), x,
+        canvas.drawString(Draw.elide(fm, name, width), x,
                 baseline(fm.getAscent(), fm.getDescent()));
     }
 
@@ -213,7 +214,7 @@ public final class CharacterRow extends DefaultListCellRenderer {
         canvas.setColor(clazz == null ? Theme.ACCENT_HOVER : connected ? Theme.FAINT : Theme.GHOST);
 
         final var fm = canvas.getFontMetrics();
-        final var text = clazz == null ? NO_CLASS : clazz.label();
+        final var text = clazz == null ? words.get("character.no_class") : clazz.label();
         canvas.drawString(Draw.elide(fm, text, columns.classWidth), columns.classX,
                 baseline(fm.getAscent(), fm.getDescent()));
     }

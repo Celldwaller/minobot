@@ -3,6 +3,8 @@ package fr.minobot.ui;
 import fr.minobot.app.Feature;
 import fr.minobot.core.domain.Activity;
 import fr.minobot.core.domain.Whisper;
+import fr.minobot.i18n.Language;
+import fr.minobot.i18n.Words;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,9 @@ import java.util.Map;
  * the panel shows a state for rather than a key: they have no hotkey, so the panel draws each as an explicit
  * on/off switch.
  *
+ * <p>{@code language} is the one the player reads the panel in — what the header's selector shows as
+ * chosen, and what every word on the panel is looked up in, through {@link #words()}.
+ *
  * <p>{@code activity} and {@code whispers} both arrive <strong>newest first</strong>, which is the order
  * the panel reads them in: the player opens it to see what just happened, so the last thing to have
  * happened is the first thing drawn. They are the record of everything the features did off-screen —
@@ -43,13 +48,16 @@ import java.util.Map;
 public record OverlayContent(List<CharacterEntry> characters, Map<Feature, String> hotkeys, double scale,
                              boolean autoPassTurn, boolean autoAcceptTrade,
                              boolean econome, boolean spellSetup,
-                             List<Activity> activity, List<Whisper> whispers) {
+                             List<Activity> activity, List<Whisper> whispers, Language language) {
 
     /**
      * What the panel lists a game window with no character loaded yet under — a login or selection
      * screen. It has a window but no name to be cycled by or given a class to, so it rides in the list
      * as a {@link Character} under this name and is left out of both the saved order and the classes.
      * Here rather than in the controller so the view can recognise the row without hardcoding the string.
+     *
+     * <p>A name and not a phrase: the view draws the row as {@code character.logging_in}, in the player's
+     * language, and never this.
      */
     public static final String LOGGING_IN = "(logging in…)";
 
@@ -58,6 +66,11 @@ public record OverlayContent(List<CharacterEntry> characters, Map<Feature, Strin
         hotkeys = Map.copyOf(hotkeys);
         activity = List.copyOf(activity);
         whispers = List.copyOf(whispers);
+    }
+
+    /** Every word the panel draws, in the language the player chose. */
+    public Words words() {
+        return Words.in(language);
     }
 
     /** How many of the listed characters have their window open — what the team heading counts. */

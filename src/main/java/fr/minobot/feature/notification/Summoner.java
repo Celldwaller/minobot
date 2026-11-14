@@ -4,6 +4,7 @@ import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
+import fr.minobot.i18n.Text;
 
 /**
  * Brings up a character the game is calling for — their turn, a request — the way every auto-focus does.
@@ -25,12 +26,12 @@ final class Summoner {
         this.activity = activity;
     }
 
-    void summon(GameWindow character, String reason) {
+    void summon(GameWindow character, Text reason) {
         if (isInFront(character)) {
             return;
         }
         if (focus.focusIfIdle(character.hwnd())) {
-            activity.record("Switched to " + character.name(), reason);
+            activity.record(Text.of("activity.switched", character.name()), reason);
         }
     }
 

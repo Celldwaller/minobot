@@ -1,6 +1,7 @@
 package fr.minobot.ui.overlay.console;
 
 import fr.minobot.core.domain.Activity;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.Theme;
 import fr.minobot.ui.components.containers.Card;
 import fr.minobot.ui.components.labels.Hint;
@@ -16,6 +17,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -51,22 +53,21 @@ public final class ActivityList {
     /** Wall-clock, to the second: the acts come seconds apart, so minutes alone would not tell them apart. */
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    /** What the column says when nothing has happened yet — never a blank, which reads as broken. */
-    private static final String NOTHING_YET = "Nothing yet — Minobot is watching.";
-
-    public JComponent build(Scale scale, List<Activity> entries) {
-        final var header = new SectionHeader(scale, "Activity", "what Minobot just did", null);
+    /** @param words the player's language — an entry is put into words here, not when it was written */
+    public JComponent build(Scale scale, Words words, List<Activity> entries) {
+        final var header = new SectionHeader(scale, words.get("activity.title"), words.get("activity.note"), null);
         final var column = Card.plainColumn().pinnedTo(scale.px(WIDTH),
                 header.getPreferredSize().height + VISIBLE * scale.px(LINE_HEIGHT));
         column.add(header);
 
         if (entries.isEmpty()) {
-            column.add(new Hint(scale, NOTHING_YET));
+            // Never a blank, which reads as broken.
+            column.add(new Hint(scale, words.get("activity.empty")));
             return column;
         }
 
         for (final var entry : entries.stream().limit(VISIBLE).toList()) {
-            column.add(new Line(scale, entry));
+            column.add(new Line(scale, entry.at(), words.get(entry.what()), words.get(entry.detail())));
         }
         return column;
     }
@@ -75,11 +76,15 @@ public final class ActivityList {
     private static final class Line extends JPanel {
 
         private final Scale scale;
-        private final Activity entry;
+        private final Instant at;
+        private final String what;
+        private final String detail;
 
-        private Line(Scale scale, Activity entry) {
+        private Line(Scale scale, Instant at, String what, String detail) {
             this.scale = scale;
-            this.entry = entry;
+            this.at = at;
+            this.what = what;
+            this.detail = detail;
             setOpaque(false);
             setAlignmentX(Component.LEFT_ALIGNMENT);
             setPreferredSize(new Dimension(0, scale.px(LINE_HEIGHT)));
@@ -96,20 +101,20 @@ public final class ActivityList {
             canvas.setFont(scale.font(Fonts.MONO, Metrics.SMALL));
             canvas.setColor(Theme.GHOST);
             final var mono = canvas.getFontMetrics();
-            canvas.drawString(CLOCK.format(entry.at().atZone(ZoneId.systemDefault())), 0,
+            canvas.drawString(CLOCK.format(at.atZone(ZoneId.systemDefault())), 0,
                     baseline(mono.getAscent(), mono.getDescent()));
 
-            final var detailWidth = entry.detail().isBlank() ? 0 : detailRoom + gap;
+            final var detailWidth = detail.isBlank() ? 0 : detailRoom + gap;
             final var whatX = time + gap;
             final var whatRoom = getWidth() - whatX - detailWidth;
 
             canvas.setFont(scale.font(Fonts.MEDIUM, Metrics.LABEL));
             canvas.setColor(Theme.TEXT_SOFT);
             final var text = canvas.getFontMetrics();
-            canvas.drawString(Draw.elide(text, entry.what(), whatRoom), whatX,
+            canvas.drawString(Draw.elide(text, what, whatRoom), whatX,
                     baseline(text.getAscent(), text.getDescent()));
 
-            if (!entry.detail().isBlank()) {
+            if (!detail.isBlank()) {
                 paintDetail(canvas, detailRoom);
             }
             canvas.dispose();
@@ -120,8 +125,8 @@ public final class ActivityList {
             canvas.setFont(scale.font(Fonts.MEDIUM, Metrics.SMALL));
             canvas.setColor(Theme.DIM);
             final var metrics = canvas.getFontMetrics();
-            final var detail = Draw.elide(metrics, entry.detail(), room);
-            canvas.drawString(detail, getWidth() - metrics.stringWidth(detail),
+            final var elided = Draw.elide(metrics, detail, room);
+            canvas.drawString(elided, getWidth() - metrics.stringWidth(elided),
                     baseline(metrics.getAscent(), metrics.getDescent()));
         }
 

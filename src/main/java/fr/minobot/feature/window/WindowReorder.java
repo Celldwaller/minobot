@@ -4,6 +4,7 @@ import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
+import fr.minobot.i18n.Text;
 import fr.minobot.win32.Win32;
 import fr.minobot.win32.WindowApi;
 import org.slf4j.Logger;
@@ -77,7 +78,7 @@ public final class WindowReorder {
             }
 
             log.info("Taskbar reorder complete.");
-            activity.record("Taskbar reordered", characters.size() + " characters");
+            activity.record(Text.of("activity.taskbar_reordered"), Text.of("activity.characters", characters.size()));
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             log.warn("The reorder sequence was interrupted; bringing the characters back.");

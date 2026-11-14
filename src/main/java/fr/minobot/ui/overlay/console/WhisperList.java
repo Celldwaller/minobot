@@ -1,6 +1,7 @@
 package fr.minobot.ui.overlay.console;
 
 import fr.minobot.core.domain.Whisper;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.Theme;
 import fr.minobot.ui.components.containers.Card;
@@ -61,8 +62,6 @@ public final class WhisperList {
      */
     private static final String TO = " › ";
 
-    private static final String NOTHING_YET = "No whisper yet.";
-
     private final OverlayActions actions;
 
     public WhisperList(OverlayActions actions) {
@@ -73,17 +72,18 @@ public final class WhisperList {
      * @param height the column's whole height, whatever it holds — as many whispers are shown as fit in
      *               it, up to {@link #VISIBLE}
      */
-    public JComponent build(Scale scale, List<Whisper> whispers, int height) {
+    public JComponent build(Scale scale, Words words, List<Whisper> whispers, int height) {
         final var column = Card.plainColumn().pinnedTo(scale.px(WIDTH), height);
-        final var header = new SectionHeader(scale, "Whispers", null, clearButton(scale, whispers.isEmpty()));
+        final var header = new SectionHeader(scale, words.get("whispers.title"), null,
+                clearButton(scale, words, whispers.isEmpty()));
         column.add(header);
 
         if (whispers.isEmpty()) {
-            column.add(new Hint(scale, NOTHING_YET));
+            column.add(new Hint(scale, words.get("whispers.empty")));
             return column;
         }
 
-        final var hint = new Hint(scale, "Click one to jump to that character.");
+        final var hint = new Hint(scale, words.get("whispers.hint"));
         final var step = scale.px(WhisperCard.HEIGHT) + scale.px(4);
         final var room = height - header.getPreferredSize().height - scale.px(4) - hint.getPreferredSize().height;
         final var fits = Math.max(1, Math.min(VISIBLE, room / step));
@@ -97,8 +97,8 @@ public final class WhisperList {
     }
 
     /** The way out of a full list. Offered only when there is something to clear. */
-    private JComponent clearButton(Scale scale, boolean empty) {
-        final var clear = new JLabel(empty ? "" : "Clear");
+    private JComponent clearButton(Scale scale, Words words, boolean empty) {
+        final var clear = new JLabel(empty ? "" : words.get("whispers.clear"));
         clear.setForeground(Theme.GHOST);
         clear.setFont(scale.font(Fonts.MEDIUM, Metrics.SMALL));
         if (empty) {

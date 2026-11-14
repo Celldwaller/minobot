@@ -15,6 +15,8 @@ import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.vision.Hud;
 import fr.minobot.core.vision.SpellBar;
+import fr.minobot.i18n.Text;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.MarksActions;
 import fr.minobot.ui.MarksContent;
 import fr.minobot.ui.MarksContent.Kind;
@@ -67,12 +69,12 @@ public final class SpellMarks implements MarksActions {
     /** {@code VK_LBUTTON}. */
     private static final int LEFT_BUTTON = 0x01;
 
-    static final String SETUP_HINT = "Spell setup · %s, layout %s — click a spell, then cast it";
-    static final String NO_BAR_HINT = "Spell setup · show the spell bar";
-    static final String UNPLACED_HINT = "Cast, not on the bar yet: %s";
-    static final String OWN_LAYOUT = "Own layout";
-    static final String CLASS_LAYOUT = "Use class layout";
-    static final String WEAPON_LABEL = "Weapon";
+    static final String SETUP_HINT = "marks.setup_hint";
+    static final String NO_BAR_HINT = "marks.no_bar_hint";
+    static final String UNPLACED_HINT = "marks.unplaced_hint";
+    static final String OWN_LAYOUT = "marks.own_layout";
+    static final String CLASS_LAYOUT = "marks.class_layout";
+    static final String WEAPON_LABEL = "marks.weapon";
     static final String UNKNOWN_LABEL = "?";
 
     private final WindowApi api;
@@ -234,12 +236,14 @@ public final class SpellMarks implements MarksActions {
 
     private void repeated(Cast cast) {
         if (settings.get().econome() && windows.windowOf(cast.fighter()).isPresent()) {
-            activity.record("Easyconome: challenge lost", cast.fighter() + " cast " + cast.action() + " twice");
+            activity.record(Text.of("activity.challenge_lost"),
+                    Text.of("activity.cast_twice", cast.fighter(), cast.action()));
         }
     }
 
     private MarksContent content(Game game) {
         final var config = settings.get();
+        final var words = Words.in(config.language());
         final var name = game.window().name();
         final var layout = layoutOf(name);
         final var width = game.area().width();
@@ -253,19 +257,19 @@ public final class SpellMarks implements MarksActions {
         inSetup = config.spellSetup() ? name : null;
         if (config.spellSetup()) {
             if (classOf(name) != null) {
-                action = layouts.hasOwn(name) ? CLASS_LAYOUT : OWN_LAYOUT;
+                action = words.get(layouts.hasOwn(name) ? CLASS_LAYOUT : OWN_LAYOUT);
             }
             if (barUp) {
                 final var hovered = cursorIn(game);
                 for (var slot = 0; slot < SpellBar.slots(hud); slot++) {
-                    final var spell = slot == SpellBar.WEAPON ? Optional.of(WEAPON_LABEL) : layouts.spellAt(layout, slot);
+                    final var spell = slot == SpellBar.WEAPON ? Optional.of(words.get(WEAPON_LABEL)) : layouts.spellAt(layout, slot);
                     final var label = hovered.isPresent() && hovered.getAsInt() == slot ? spell.orElse(UNKNOWN_LABEL) : "";
                     marks.add(new Mark(SpellBar.slot(hud, slot, width, height),
                             spell.isPresent() ? Kind.KNOWN : Kind.UNKNOWN, label));
                 }
-                hint = SETUP_HINT.formatted(name, layout);
+                hint = words.get(SETUP_HINT, name, layout);
             } else {
-                hint = NO_BAR_HINT;
+                hint = words.get(NO_BAR_HINT);
             }
         }
         if (config.econome() && turns.inFight()) {
@@ -279,7 +283,7 @@ public final class SpellMarks implements MarksActions {
                 }
             }
             if (hint.isEmpty() && !unplaced.isEmpty()) {
-                hint = UNPLACED_HINT.formatted(String.join(", ", unplaced));
+                hint = words.get(UNPLACED_HINT, String.join(", ", unplaced));
             }
         }
         return new MarksContent(config.overlayScale(), marks, hint, action);

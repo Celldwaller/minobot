@@ -3,6 +3,7 @@ package fr.minobot.ui;
 import fr.minobot.app.Feature;
 import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.Sex;
+import fr.minobot.i18n.Language;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,12 @@ import java.util.Optional;
  * of them blocks for long except {@link #captureHotkey()}, which by nature waits for a human.
  */
 public interface OverlayActions {
+
+    /**
+     * Reads the panel, and everything else Minobot says, in another language — the header's selector.
+     * Session-only, like every switch: the next launch opens in French again.
+     */
+    void changeLanguage(Language language);
 
     /** The characters as the player has just dragged them: the order the cycler will follow. */
     void reorder(List<String> characters);

@@ -71,8 +71,8 @@ class AutoPassBannerTest {
         settle();
 
         assertThat(view.isVisible()).isTrue();
-        assertThat(view.content()).map(BannerContent::heading).contains(AutoPassBanner.HEADING);
-        assertThat(view.content()).map(BannerContent::message).contains(AutoPassBanner.MESSAGE);
+        assertThat(view.content()).map(BannerContent::heading).contains("PASSAGE AUTO DES TOURS");
+        assertThat(view.content()).map(BannerContent::message).contains("chaque personnage passe son tour");
         assertThat(view.anchor()).contains(api.clientArea(1).orElseThrow());
     }
 

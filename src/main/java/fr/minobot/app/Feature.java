@@ -1,6 +1,7 @@
 package fr.minobot.app;
 
 import java.time.Duration;
+import java.util.Locale;
 
 /**
  * The features a player binds a key to, and the slot each one occupies in {@link Config}.
@@ -41,9 +42,14 @@ public enum Feature {
         this.cooldown = cooldown;
     }
 
-    /** How the feature is named to the player — in the logs, and in the overlay. */
+    /** How the feature is named in the logs, which stay in English whatever the player reads. */
     public String label() {
         return label;
+    }
+
+    /** Where the overlay finds the feature's name in the player's language — {@code feature.overlay}. */
+    public String key() {
+        return "feature." + name().toLowerCase(Locale.ROOT);
     }
 
     /**

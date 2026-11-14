@@ -3,6 +3,7 @@ package fr.minobot.feature.window;
 import fr.minobot.core.ActivityLog;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
+import fr.minobot.i18n.Text;
 import fr.minobot.win32.Win32;
 import fr.minobot.win32.WindowApi;
 import org.slf4j.Logger;
@@ -107,6 +108,7 @@ public final class WindowMaximizer {
         }
         log.info("New game window '{}': maximizing it.", window.title());
         api.showWindow(window.hwnd(), Win32.SW_MAXIMIZE);
-        activity.record("Window maximized", window.hasCharacterName() ? window.name() : "new window");
+        activity.record(Text.of("activity.window_maximized"),
+                window.hasCharacterName() ? Text.verbatim(window.name()) : Text.of("activity.new_window"));
     }
 }

@@ -1,5 +1,6 @@
 package fr.minobot.ui.components.labels;
 
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.Theme;
 import fr.minobot.ui.utils.Draw;
 import fr.minobot.ui.utils.Fonts;
@@ -17,6 +18,7 @@ import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Locale;
 
 /**
  * A key combination, drawn the way a key looks: one small monospaced tile per key, with a faint
@@ -35,16 +37,16 @@ public final class KeyChip {
     /** How a combination separates its keys, in the configuration and therefore here. */
     private static final String SEPARATOR = "+";
 
-    /** What a feature nobody bound offers instead of a chip: there is no key to picture yet. */
-    private static final String UNBOUND = "Set a key";
+    /** What a feature nobody bound offers instead of a chip, by key: there is no key to picture yet. */
+    private static final String UNBOUND = "keybinds.unbound";
 
     /** The room a tile keeps left and right of its key. */
     private static final int PAD_X = 7;
     private static final int PAD_Y = 3;
 
     /** The chips as a row, drawn and no more — a badge in a heading, a key nobody may click. */
-    public static JComponent of(Scale scale, String combination) {
-        return row(scale, combination);
+    public static JComponent of(Scale scale, Words words, String combination) {
+        return row(scale, words, combination);
     }
 
     /**
@@ -53,8 +55,8 @@ public final class KeyChip {
      * <p>The listener is put on the row rather than on each tile: a combination is rebound as a whole,
      * and a player who aimed at {@code shift} rather than at {@code X1} meant the same thing.
      */
-    public static JComponent clickable(Scale scale, String combination, Runnable onClick) {
-        final var row = row(scale, combination);
+    public static JComponent clickable(Scale scale, Words words, String combination, Runnable onClick) {
+        final var row = row(scale, words, combination);
         row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         row.addMouseListener(new MouseAdapter() {
             @Override
@@ -65,13 +67,13 @@ public final class KeyChip {
         return row;
     }
 
-    private static JPanel row(Scale scale, String combination) {
+    private static JPanel row(Scale scale, Words words, String combination) {
         final var row = new JPanel(new FlowLayout(FlowLayout.RIGHT, scale.px(3), 0));
         row.setOpaque(false);
         row.setAlignmentX(Component.RIGHT_ALIGNMENT);
 
         if (combination.isBlank()) {
-            row.add(unbound(scale));
+            row.add(unbound(scale, words.get(UNBOUND)));
             return row;
         }
 
@@ -81,14 +83,23 @@ public final class KeyChip {
                 row.add(plus(scale));
             }
             // The last key is the one pressed; whatever comes before it is held down.
-            row.add(new Tile(scale, keys[index], index == keys.length - 1));
+            row.add(new Tile(scale, said(words, keys[index]), index == keys.length - 1));
         }
         return row;
     }
 
+    /**
+     * A key as the player knows it. The configuration's names are Windows' — {@code x1} is what Windows
+     * calls the first side button of a mouse, and nobody else does — so the mouse buttons are phrased in
+     * the player's language; a key that is its own word, {@code F8} or {@code shift}, is drawn as written.
+     */
+    private static String said(Words words, String key) {
+        return words.find("key." + key.toLowerCase(Locale.ROOT)).orElse(key);
+    }
+
     /** The invitation to bind a key: a dashed outline, the shape of a chip that is not there yet. */
-    private static JLabel unbound(Scale scale) {
-        final var label = new JLabel(UNBOUND) {
+    private static JLabel unbound(Scale scale, String invitation) {
+        final var label = new JLabel(invitation) {
             @Override
             protected void paintComponent(Graphics graphics) {
                 final var canvas = Draw.smooth(graphics);

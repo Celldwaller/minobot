@@ -1,6 +1,7 @@
 package fr.minobot.feature.notification;
 
 import fr.minobot.feature.Features;
+import fr.minobot.i18n.Text;
 import fr.minobot.win32.FakeWindowApi;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class TurnFocuserTest {
 
         assertThat(api.foregroundWindow()).isEqualTo(2);
         assertThat(features.activity().recent()).singleElement()
-                .satisfies(entry -> assertThat(entry.what()).isEqualTo("Switched to Bravo"));
+                .satisfies(entry -> assertThat(entry.what()).isEqualTo(Text.of("activity.switched", "Bravo")));
     }
 
     @Test

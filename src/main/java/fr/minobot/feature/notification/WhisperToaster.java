@@ -258,7 +258,8 @@ public final class WhisperToaster implements ToastActions {
                 .map(whisper -> new ToastContent.Card(whisper.id(), whisper.receiver(),
                         whisper.sender(), whisper.message()))
                 .toList();
-        return new ToastContent(settings.get().overlayScale(), cards);
+        final var config = settings.get();
+        return new ToastContent(config.overlayScale(), config.language(), cards);
     }
 
     /** @return whether the follower may go on; {@code false} means the thread was interrupted */

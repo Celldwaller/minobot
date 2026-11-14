@@ -3,6 +3,7 @@ package fr.minobot.ui.overlay.characters.clazz;
 import fr.minobot.core.domain.Character;
 import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.Sex;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.CharacterEntry;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
@@ -110,7 +111,8 @@ public final class ClassPicker {
         // Its own strong edge: it stands on top of the panel, not on it, and must read as lifted off.
         final var card = Card.column(scale, Theme.SURFACE, Theme.EDGE_STRONG);
         card.setBorder(new EmptyBorder(padding, padding, padding, padding));
-        card.add(new SectionHeader(scale, "Class", character, sexToggle(character, sex)));
+        card.add(new SectionHeader(scale, content.words().get("picker.title"), character,
+                sexToggle(content.words(), character, sex)));
 
         final var grid = new JPanel(new GridLayout(0, COLUMNS, scale.px(Metrics.GAP - 2),
                 scale.px(Metrics.GAP - 2)));
@@ -128,10 +130,10 @@ public final class ClassPicker {
      * the picker open — so the class tiles below redraw in that sex, and the class the player then chooses
      * is theirs in it. The sex already set is the lit one.
      */
-    private JComponent sexToggle(String character, Sex current) {
+    private JComponent sexToggle(Words words, String character, Sex current) {
         final var sexes = Sex.values();
         return Segmented.of(scale,
-                List.of(sexes[0].label(), sexes[1].label()),
+                List.of(words.get(sexes[0].key()), words.get(sexes[1].key())),
                 current.ordinal(),
                 index -> actions.assignSex(character, sexes[index]));
     }

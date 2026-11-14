@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import fr.minobot.core.domain.Character;
 import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.Sex;
+import fr.minobot.i18n.Language;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -82,7 +83,13 @@ public record Config(
          * Whether the slots of the spell bar are framed, known or not, so the player can teach Minobot
          * which spell each one holds. A switch like {@link #econome}, for the fight it takes to learn them.
          */
-        @JsonProperty("spell_setup") boolean spellSetup
+        @JsonProperty("spell_setup") boolean spellSetup,
+
+        /**
+         * The language the player reads Minobot in — the overlay's {@code FR}/{@code EN} selector. A switch
+         * like the others, forgotten on restart: every launch opens in French.
+         */
+        @JsonProperty("language") Language language
 ) {
 
     /**
@@ -123,7 +130,9 @@ public record Config(
                 true,
                 // Off: a challenge is taken fight by fight.
                 false,
-                false
+                false,
+                // The game's own language.
+                Language.FR
         );
     }
 
@@ -131,6 +140,7 @@ public record Config(
         multiclickExclude = copyOrEmpty(multiclickExclude);
         characters = copyOrEmpty(characters);
         overlayScale = Math.clamp(overlayScale, MIN_OVERLAY_SCALE, MAX_OVERLAY_SCALE);
+        language = language == null ? Language.FR : language;
     }
 
     /**
@@ -163,7 +173,8 @@ public record Config(
                 autoPassTurn,
                 autoAcceptTrade,
                 econome,
-                spellSetup);
+                spellSetup,
+                language);
     }
 
     /** The new combination for the feature being rebound, the current one for every other. */
@@ -200,7 +211,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, excluded, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, spellSetup);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, spellSetup, language);
     }
 
     /** The same configuration with the panel drawn bigger or smaller — how its slider lands. */
@@ -208,7 +219,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, scale, autoPassTurn, autoAcceptTrade, econome, spellSetup);
+                overlayHotkey, autoPassTurnHotkey, scale, autoPassTurn, autoAcceptTrade, econome, spellSetup, language);
     }
 
     /** The same configuration with the turn-passer switched on or off — how the overlay's toggle lands. */
@@ -216,7 +227,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, enabled, autoAcceptTrade, econome, spellSetup);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, enabled, autoAcceptTrade, econome, spellSetup, language);
     }
 
     /** The same configuration with the trade-accepter switched on or off — the overlay's other toggle. */
@@ -224,7 +235,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, enabled, econome, spellSetup);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, enabled, econome, spellSetup, language);
     }
 
     /** The same configuration with the spell marks switched on or off — the overlay's Économe switch. */
@@ -232,7 +243,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, enabled, spellSetup);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, enabled, spellSetup, language);
     }
 
     /** The same configuration with the spell bar's setup switched on or off. */
@@ -240,7 +251,16 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, enabled);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, enabled, language);
+    }
+
+    /** The same configuration read in another language — how the overlay's selector lands. */
+    public Config withLanguage(Language chosen) {
+        return new Config(
+                logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
+                characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, spellSetup,
+                chosen);
     }
 
     /**
@@ -292,7 +312,7 @@ public record Config(
         return new Config(
                 logLevel, multiclickHotkey, multiclickExclude, resetWindowsHotkey, groupInviteHotkey,
                 characters, windowCycleNextHotkey, windowCyclePrevHotkey, windowReorderHotkey,
-                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, spellSetup);
+                overlayHotkey, autoPassTurnHotkey, overlayScale, autoPassTurn, autoAcceptTrade, econome, spellSetup, language);
     }
 
     private static <T> List<T> copyOrEmpty(List<T> value) {
