@@ -7,6 +7,7 @@ import fr.minobot.core.FocusManager;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.input.Input;
+import fr.minobot.i18n.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +89,7 @@ public final class TurnPasser {
             if (focus.focus(character.hwnd())) {
                 input.pressKey(END_TURN_KEY);
                 log.info("Passed '{}'s turn.", character.name());
-                activity.record("Passed " + character.name() + "'s turn", "auto-pass");
+                activity.record(Text.of("activity.turn_passed", character.name()), Text.of("activity.auto_pass"));
             } else {
                 log.warn("Could not focus '{}': its turn was not passed.", character.name());
             }

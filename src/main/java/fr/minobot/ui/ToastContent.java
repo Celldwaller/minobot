@@ -1,5 +1,8 @@
 package fr.minobot.ui;
 
+import fr.minobot.i18n.Language;
+import fr.minobot.i18n.Words;
+
 import java.util.List;
 
 /**
@@ -18,10 +21,15 @@ import java.util.List;
  * stack covers a band of the same game on the same monitor. It is a multiplier of the natural size of
  * every piece of a card, and the view is the only one that knows what those natural sizes are.
  */
-public record ToastContent(double scale, List<Card> cards) {
+public record ToastContent(double scale, Language language, List<Card> cards) {
 
     public ToastContent {
         cards = List.copyOf(cards);
+    }
+
+    /** The words of the card's own frame, in the player's language — the message itself is the sender's. */
+    public Words words() {
+        return Words.in(language);
     }
 
     /** One whisper on the stack: who received it, who sent it, and what they said. */

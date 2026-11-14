@@ -1,6 +1,7 @@
 package fr.minobot.core;
 
 import fr.minobot.core.domain.Activity;
+import fr.minobot.i18n.Text;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -21,42 +22,42 @@ class ActivityLogTest {
     @Test
     @DisplayName("an act is kept with its time, what it was, and the circumstance behind it")
     void keepsWhatWasDone() {
-        log.record("Trade accepted on Bravo", "from Alpha");
+        log.record(Text.verbatim("Trade accepted on Bravo"), Text.verbatim("from Alpha"));
 
         assertThat(log.recent()).singleElement()
-                .isEqualTo(new Activity(NOW, "Trade accepted on Bravo", "from Alpha"));
+                .isEqualTo(new Activity(NOW, Text.verbatim("Trade accepted on Bravo"), Text.verbatim("from Alpha")));
     }
 
     @Test
     @DisplayName("an act that speaks for itself carries no detail rather than a blank-looking one")
     void allowsAnActWithNoDetail() {
-        log.record("Taskbar reordered");
+        log.record(Text.verbatim("Taskbar reordered"));
 
         assertThat(log.recent()).singleElement()
-                .extracting(Activity::detail).isEqualTo("");
+                .extracting(Activity::detail).isEqualTo(Text.NONE);
     }
 
     @Test
     @DisplayName("the newest is read first: the panel is opened to see what just happened")
     void readsNewestFirst() {
-        log.record("first");
-        log.record("second");
-        log.record("third");
+        log.record(Text.verbatim("first"));
+        log.record(Text.verbatim("second"));
+        log.record(Text.verbatim("third"));
 
         assertThat(log.recent()).extracting(Activity::what)
-                .containsExactly("third", "second", "first");
+                .containsExactly(Text.verbatim("third"), Text.verbatim("second"), Text.verbatim("first"));
     }
 
     @Test
     @DisplayName("it forgets its oldest past its capacity rather than growing for the whole session")
     void dropsTheOldestPastCapacity() {
-        IntStream.rangeClosed(1, ActivityLog.CAPACITY + 5).forEach(i -> log.record("act " + i));
+        IntStream.rangeClosed(1, ActivityLog.CAPACITY + 5).forEach(i -> log.record(Text.verbatim("act " + i)));
 
         assertThat(log.recent()).hasSize(ActivityLog.CAPACITY);
         assertThat(log.recent()).extracting(Activity::what)
                 .as("the five oldest were dropped, the newest is still at the head")
-                .startsWith("act " + (ActivityLog.CAPACITY + 5))
-                .endsWith("act 6");
+                .startsWith(Text.verbatim("act " + (ActivityLog.CAPACITY + 5)))
+                .endsWith(Text.verbatim("act 6"));
     }
 
     @Test
@@ -68,7 +69,7 @@ class ActivityLogTest {
     @Test
     @DisplayName("clearing drops everything")
     void clears() {
-        log.record("something");
+        log.record(Text.verbatim("something"));
 
         log.clear();
 

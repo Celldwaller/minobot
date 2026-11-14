@@ -12,6 +12,8 @@ import fr.minobot.core.domain.Character;
 import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Sex;
+import fr.minobot.i18n.Language;
+import fr.minobot.i18n.Text;
 import fr.minobot.ui.CharacterEntry;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
@@ -234,6 +236,13 @@ public final class OverlayController implements OverlayActions {
     }
 
     @Override
+    public void changeLanguage(Language language) {
+        log.info("Overlay language set to {}.", language);
+        settings.update(config -> config.withLanguage(language));
+        redraw();
+    }
+
+    @Override
     public void reorder(List<String> characters) {
         // A not-yet-logged-in window rides in the list under its label, but has no name to be cycled by:
         // it must not land in the order, where it would be a dead entry until the character loads.
@@ -346,7 +355,7 @@ public final class OverlayController implements OverlayActions {
     public void resetEconome() {
         log.info("Easyconome reset: the spells cast this fight are forgotten.");
         spells.clear();
-        activity.record("Easyconome reset", "nothing cast yet");
+        activity.record(Text.of("activity.econome_reset"), Text.of("activity.nothing_cast"));
         redraw();
     }
 
@@ -450,7 +459,7 @@ public final class OverlayController implements OverlayActions {
         return new OverlayContent(entries, hotkeys, config.overlayScale(),
                 config.autoPassTurn(), config.autoAcceptTrade(),
                 config.econome(), config.spellSetup(),
-                activity.recent(), whispers.recent());
+                activity.recent(), whispers.recent(), config.language());
     }
 
     /** Shows the change the player just made, without moving the panel off its character. */

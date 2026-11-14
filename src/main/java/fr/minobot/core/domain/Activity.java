@@ -1,5 +1,7 @@
 package fr.minobot.core.domain;
 
+import fr.minobot.i18n.Text;
+
 import java.time.Instant;
 
 /**
@@ -10,13 +12,14 @@ import java.time.Instant;
  * them in two columns: the acts line up down the middle of the card and are read as a list, while the
  * details sit at the right and are read only when one of the acts is a surprise.
  *
- * <p>Both are already the player's words when they get here. The panel does no phrasing of its own —
- * a feature says what it did, in terms of characters, and the panel shows it.
+ * <p>Both are {@link Text}, not yet words: an entry outlives the language it was written in, and the
+ * panel phrases it in the one the player reads when it is drawn. A feature says what it did, in terms of
+ * characters; the panel puts it into words.
  */
-public record Activity(Instant at, String what, String detail) {
+public record Activity(Instant at, Text what, Text detail) {
 
     /** An act that needs no circumstance: the detail column is simply empty for it. */
-    public Activity(Instant at, String what) {
-        this(at, what, "");
+    public Activity(Instant at, Text what) {
+        this(at, what, Text.NONE);
     }
 }

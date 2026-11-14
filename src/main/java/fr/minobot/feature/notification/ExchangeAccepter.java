@@ -8,6 +8,7 @@ import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Request;
 import fr.minobot.core.input.Input;
+import fr.minobot.i18n.Text;
 import fr.minobot.win32.Win32;
 import fr.minobot.win32.WindowApi;
 import org.slf4j.Logger;
@@ -118,7 +119,7 @@ public final class ExchangeAccepter {
 
             input.pressKey(ACCEPT_KEY);
             log.info("Accepted the trade on '{}'.", receiver.name());
-            activity.record("Trade accepted on " + receiver.name(), "from " + asker);
+            activity.record(Text.of("activity.trade_accepted", receiver.name()), Text.of("activity.from", asker));
 
             // Hand the screen back: the player never asked to leave the window they were on.
             if (previous != Win32.NULL_HANDLE && previous != receiver.hwnd()) {

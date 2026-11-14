@@ -4,6 +4,7 @@ import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FightTurns;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.WindowManager;
+import fr.minobot.i18n.Text;
 
 /**
  * Takes the player to the character whose turn it is — the auto-focus, for a turn.
@@ -29,6 +30,6 @@ public final class TurnFocuser {
     }
 
     void onTurn(String fighter) {
-        windows.windowOf(fighter).ifPresent(character -> summoner.summon(character, "their turn"));
+        windows.windowOf(fighter).ifPresent(character -> summoner.summon(character, Text.of("activity.their_turn")));
     }
 }

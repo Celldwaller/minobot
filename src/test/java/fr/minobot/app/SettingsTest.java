@@ -80,7 +80,7 @@ class SettingsTest {
         @DisplayName("a hotkey set to null in config.json reads as off, and does not blow up")
         void readsANullHotkeyAsBlank() {
             final var config = new Config("INFO", "x1", List.of(), "shift+x1", null,
-                    List.of(), "x2", "shift+x2", "F9", "F10", "shift+middle", 1.5, false, false, false, false);
+                    List.of(), "x2", "shift+x2", "F9", "F10", "shift+middle", 1.5, false, false, false, false, null);
 
             assertThat(Feature.GROUP_INVITE.hotkeyIn(config)).isEmpty();
         }

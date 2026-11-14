@@ -50,10 +50,11 @@ public final class TeamCard {
         final var card = Card.column(scale, Theme.SURFACE).pinnedTo(scale.px(WIDTH));
         card.setBorder(new EmptyBorder(padding, padding, padding, padding));
 
-        card.add(new SectionHeader(scale, "Team", online(content), null));
-        card.add(characters.build(scale, innerWidth));
+        final var words = content.words();
+        card.add(new SectionHeader(scale, words.get("team.title"), online(content), null));
+        card.add(characters.build(scale, words, innerWidth));
         card.add(Box.createVerticalStrut(scale.px(Metrics.GAP + 2)));
-        card.add(new Hint(scale, "Drag to reorder · double-click for class & sex"));
+        card.add(new Hint(scale, words.get("team.hint")));
         return card;
     }
 
@@ -82,6 +83,6 @@ public final class TeamCard {
 
     /** {@code 4 online of 8} — the one number the player checks before pressing anything. */
     private static String online(OverlayContent content) {
-        return content.online() + " online of " + content.characters().size();
+        return content.words().get("team.online", content.online(), content.characters().size());
     }
 }

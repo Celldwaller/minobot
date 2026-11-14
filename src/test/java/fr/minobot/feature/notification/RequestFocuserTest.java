@@ -2,6 +2,7 @@ package fr.minobot.feature.notification;
 
 import fr.minobot.core.domain.Request;
 import fr.minobot.feature.Features;
+import fr.minobot.i18n.Text;
 import fr.minobot.win32.FakeWindowApi;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,8 +36,8 @@ class RequestFocuserTest {
 
         assertThat(api.foregroundWindow()).isEqualTo(2);
         assertThat(features.activity().recent()).singleElement().satisfies(entry -> {
-            assertThat(entry.what()).isEqualTo("Switched to Bravo");
-            assertThat(entry.detail()).isEqualTo("group invite from Zoro");
+            assertThat(entry.what()).isEqualTo(Text.of("activity.switched", "Bravo"));
+            assertThat(entry.detail()).isEqualTo(Text.of("activity.group_invite_from", "Zoro"));
         });
     }
 
@@ -50,7 +51,7 @@ class RequestFocuserTest {
 
         assertThat(api.foregroundWindow()).isEqualTo(2);
         assertThat(features.activity().recent()).singleElement()
-                .satisfies(entry -> assertThat(entry.detail()).isEqualTo("duel from Zoro"));
+                .satisfies(entry -> assertThat(entry.detail()).isEqualTo(Text.of("activity.duel_from", "Zoro")));
     }
 
     @Test

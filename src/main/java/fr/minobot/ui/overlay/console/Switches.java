@@ -1,5 +1,6 @@
 package fr.minobot.ui.overlay.console;
 
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
 import fr.minobot.ui.components.buttons.StatePill;
@@ -39,9 +40,10 @@ public final class Switches {
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, scale.px(Metrics.ROW + Metrics.GAP)));
 
-        row.add(StatePill.of(scale, "Auto-pass turns", content.autoPassTurn(),
+        final var words = content.words();
+        row.add(StatePill.of(scale, words, words.get("switch.auto_pass_turn"), content.autoPassTurn(),
                 actions::toggleAutoPassTurn));
-        row.add(StatePill.of(scale, "Auto-accept trades", content.autoAcceptTrade(),
+        row.add(StatePill.of(scale, words, words.get("switch.auto_accept_trade"), content.autoAcceptTrade(),
                 actions::toggleAutoAcceptTrade));
         row.add(Box.createHorizontalStrut(scale.px(Metrics.GAP)));
         row.add(trailing);

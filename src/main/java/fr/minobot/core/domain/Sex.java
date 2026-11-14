@@ -1,5 +1,7 @@
 package fr.minobot.core.domain;
 
+import java.util.Locale;
+
 /**
  * A character's sex — the second half of what picks their icon, next to their {@link DofusClass}.
  *
@@ -10,15 +12,13 @@ package fr.minobot.core.domain;
  */
 public enum Sex {
 
-    MALE("m", "Male"),
-    FEMALE("f", "Female");
+    MALE("m"),
+    FEMALE("f");
 
     private final String suffix;
-    private final String label;
 
-    Sex(String suffix, String label) {
+    Sex(String suffix) {
         this.suffix = suffix;
-        this.label = label;
     }
 
     /** What the sex adds to an icon's file name — {@code "m"} in {@code iop_m.svg}. */
@@ -27,12 +27,12 @@ public enum Sex {
     }
 
     /**
-     * How the picker's toggle names this sex.
+     * Where the picker's toggle finds this sex's name in the player's language — {@code sex.male}.
      *
      * <p>The word, not the initial: {@code M}/{@code F} needs a legend the picker has no room for, and
      * the toggle is two segments wide either way.
      */
-    public String label() {
-        return label;
+    public String key() {
+        return "sex." + name().toLowerCase(Locale.ROOT);
     }
 }

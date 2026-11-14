@@ -1,5 +1,6 @@
 package fr.minobot.ui.components.buttons;
 
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.Theme;
 import fr.minobot.ui.utils.Draw;
 import fr.minobot.ui.utils.Fonts;
@@ -34,24 +35,25 @@ import java.util.function.Consumer;
  */
 public final class StatePill {
 
-    private static final String ON = "ON";
-    private static final String OFF = "OFF";
-
     /**
+     * @param words    the player's language, for the {@code ON}/{@code OFF} the pill says itself
      * @param label    what the switch does, in the player's words
      * @param on       which way it is set right now
      * @param onToggle handed the state the player has just asked for
      */
-    public static JComponent of(Scale scale, String label, boolean on, Consumer<Boolean> onToggle) {
+    public static JComponent of(Scale scale, Words words, String label, boolean on, Consumer<Boolean> onToggle) {
+        final var onWord = words.get("switch.on");
+        final var offWord = words.get("switch.off");
+
         final var name = new JLabel(label);
         name.setForeground(on ? Theme.TEXT : Theme.FAINT);
         name.setFont(scale.font(Fonts.SEMIBOLD, Metrics.LABEL));
 
-        final var state = new JLabel(on ? ON : OFF);
+        final var state = new JLabel(on ? onWord : offWord);
         state.setForeground(on ? Theme.ACCENT_HOVER : Theme.DIM);
         state.setFont(scale.tracked(scale.font(Fonts.CONDENSED, Metrics.HEADING), Metrics.BADGE_TRACKING));
         state.setBorder(new EmptyBorder(0, scale.px(Metrics.GAP - 1), 0, 0));
-        holdWidest(state);
+        holdWidest(state, onWord, offWord);
 
         final var pill = new Pill(scale, on, onToggle);
         pill.add(name, BorderLayout.WEST);
@@ -63,12 +65,12 @@ public final class StatePill {
      * Sizes the state for the wider of its two words, so a flip does not resize the pill and push
      * everything beside it along the row.
      */
-    private static void holdWidest(JLabel state) {
+    private static void holdWidest(JLabel state, String onWord, String offWord) {
         final var metrics = state.getFontMetrics(state.getFont());
         final var insets = state.getInsets();
         final var natural = state.getPreferredSize();
         state.setPreferredSize(new Dimension(
-                Math.max(metrics.stringWidth(ON), metrics.stringWidth(OFF)) + insets.left + insets.right,
+                Math.max(metrics.stringWidth(onWord), metrics.stringWidth(offWord)) + insets.left + insets.right,
                 natural.height));
     }
 

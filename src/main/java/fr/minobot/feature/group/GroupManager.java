@@ -7,6 +7,7 @@ import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Request;
 import fr.minobot.core.input.Input;
+import fr.minobot.i18n.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,13 +119,13 @@ public final class GroupManager {
                         invitee.name());
                 // Worth a line of its own: the group is half-formed, and the player is looking at a
                 // window that gives no sign of it. The step it stopped at is where they must look.
-                activity.record("Group invite relay stopped", "at " + invitee.name());
+                activity.record(Text.of("activity.relay_stopped"), Text.of("activity.at", invitee.name()));
                 return;
             }
         }
 
         log.info("Every character is in the group.");
-        activity.record("Group invite relay completed", characters.size() + " characters");
+        activity.record(Text.of("activity.relay_completed"), Text.of("activity.characters", characters.size()));
     }
 
     /** One link of the relay: the inviter sends the command, the invitee accepts what it gets. */

@@ -1,6 +1,7 @@
 package fr.minobot.ui.overlay.keybinds;
 
 import fr.minobot.app.Feature;
+import fr.minobot.i18n.Words;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
 import fr.minobot.ui.Theme;
@@ -42,14 +43,14 @@ import java.awt.event.MouseEvent;
  */
 public final class KeybindsDrawer {
 
-    /** The drawer's own width: enough for the longest feature label and a two-key chip beside it. */
-    private static final int WIDTH = 372;
+    /**
+     * The drawer's own width: enough for the longest feature label and a two-key chip beside it, in either
+     * language — a mouse button is named in words, {@code shift} + {@code Bouton latéral 1}, not {@code x1}.
+     */
+    private static final int WIDTH = 400;
 
     /** The drawer's close cross — the same square the panel's header wears. */
     private static final int CLOSE_SIZE = 26;
-
-    /** What a row says while it is waiting for the player to press something. */
-    private static final String CAPTURING = "press a key…";
 
     /** The cross that unbinds — smaller than a close cross: it drops a key, not a surface. */
     private static final int CLEAR_SIZE = 16;
@@ -57,13 +58,16 @@ public final class KeybindsDrawer {
     private final OverlayActions actions;
 
     /** Redraws the panel after a capture that came to nothing — nothing else would, and the row is
-     *  still saying "press a key…". */
+     *  still waiting for a key. */
     private final Runnable redraw;
 
     /** Folds the drawer away: the cross's job, and the orchestrator's state to change. */
     private final Runnable close;
 
     private Scale scale;
+
+    /** The player's language, captured at build like the scale: the rows read it as they are made. */
+    private Words words;
 
     public KeybindsDrawer(OverlayActions actions, Runnable redraw, Runnable close) {
         this.actions = actions;
@@ -73,6 +77,7 @@ public final class KeybindsDrawer {
 
     public JPanel build(Scale scale, OverlayContent content) {
         this.scale = scale;
+        this.words = content.words();
         final var padding = scale.px(Metrics.PADDING);
 
         final var drawer = Card.column(scale, Theme.SURFACE).pinnedTo(scale.px(WIDTH));
@@ -91,8 +96,8 @@ public final class KeybindsDrawer {
         }
 
         drawer.add(Box.createVerticalStrut(scale.px(Metrics.GAP + 4)));
-        drawer.add(new Hint(scale, "Click a key, then press the new one."));
-        drawer.add(new Hint(scale, "Letters and digits belong to the game chat and are refused."));
+        drawer.add(new Hint(scale, words.get("keybinds.hint.click")));
+        drawer.add(new Hint(scale, words.get("keybinds.hint.refused")));
         return drawer;
     }
 
@@ -103,7 +108,7 @@ public final class KeybindsDrawer {
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, scale.px(Metrics.ROW + Metrics.GAP)));
 
-        final var name = new JLabel("Keybinds");
+        final var name = new JLabel(words.get("keybinds.title"));
         name.setForeground(Theme.TEXT);
         name.setFont(scale.font(Fonts.SEMIBOLD, Metrics.TITLE));
 
@@ -127,7 +132,7 @@ public final class KeybindsDrawer {
             SwingUtilities.invokeLater(() -> captured.ifPresentOrElse(
                     combination -> actions.rebind(feature, combination),
                     // Nothing was pressed. The configuration did not change, so nothing will redraw the
-                    // panel for us — and the row is still saying "press a key…".
+                    // panel for us — and the row is still waiting for a key.
                     redraw));
         });
     }
@@ -150,14 +155,14 @@ public final class KeybindsDrawer {
             setAlignmentX(Component.LEFT_ALIGNMENT);
             setBorder(new EmptyBorder(scale.px(PADDING), 0, scale.px(PADDING), 0));
 
-            final var name = new JLabel(feature.label());
+            final var name = new JLabel(words.get(feature.key()));
             name.setForeground(hotkey.isBlank() ? Theme.DIM : Theme.TEXT_SOFT);
             name.setFont(scale.font(Fonts.MEDIUM, Metrics.BODY));
 
             final var keys = new JPanel();
             keys.setLayout(new BoxLayout(keys, BoxLayout.X_AXIS));
             keys.setOpaque(false);
-            keys.add(KeyChip.clickable(scale, hotkey, () -> capture(feature, this)));
+            keys.add(KeyChip.clickable(scale, words, hotkey, () -> capture(feature, this)));
             keys.add(Box.createHorizontalStrut(scale.px(Metrics.GAP)));
             keys.add(new ClearCross(scale, feature, hotkey));
 
@@ -172,7 +177,7 @@ public final class KeybindsDrawer {
         /** Replaces the row's chips with the invitation to press. Undone by the redraw that follows. */
         private void awaitKey() {
             removeAll();
-            final var waiting = new JLabel(CAPTURING);
+            final var waiting = new JLabel(words.get("keybinds.capturing"));
             waiting.setForeground(Theme.ACCENT_HOVER);
             waiting.setFont(scale.font(Fonts.SEMIBOLD, Metrics.BODY));
             add(waiting, BorderLayout.WEST);

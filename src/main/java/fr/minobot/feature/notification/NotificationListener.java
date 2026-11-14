@@ -6,6 +6,7 @@ import fr.minobot.core.NotificationManager;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Notification;
+import fr.minobot.i18n.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +98,7 @@ public final class NotificationListener {
      */
     private void goTo(GameWindow character, String reason) {
         if (focus.focusIfIdle(character.hwnd())) {
-            activity.record("Switched to " + character.name(), reason);
+            activity.record(Text.of("activity.switched", character.name()), Text.verbatim(reason));
         }
     }
 }

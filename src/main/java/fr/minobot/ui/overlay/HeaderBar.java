@@ -1,8 +1,11 @@
 package fr.minobot.ui.overlay;
 
 import fr.minobot.app.Feature;
+import fr.minobot.i18n.Language;
+import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
 import fr.minobot.ui.Theme;
+import fr.minobot.ui.components.buttons.Segmented;
 import fr.minobot.ui.components.labels.KeyChip;
 import fr.minobot.ui.utils.Draw;
 import fr.minobot.ui.utils.Fonts;
@@ -24,11 +27,12 @@ import java.awt.Graphics;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
- * The line that opens the panel: the application's mark on the left, the key that opens and closes it on
- * the right, and the close cross beyond that (pinned there by the orchestrator, which owns the one way
- * out).
+ * The line that opens the panel: the application's mark on the left, the language selector and the key
+ * that opens and closes the panel on the right, and the close cross beyond that (pinned there by the
+ * orchestrator, which owns the one way out).
  *
  * <p>It is a <strong>line</strong>, not a banner. The logo used to have a tall band of its own at the top
  * of the card, which said the application's name to a player who had already opened the application —
@@ -55,6 +59,12 @@ public final class HeaderBar {
     /** The logo, read once; {@code null} when there is no {@code logo.png} to fall back from. */
     private final BufferedImage logo = loadLogo();
 
+    private final OverlayActions actions;
+
+    public HeaderBar(OverlayActions actions) {
+        this.actions = actions;
+    }
+
     /** @param trailing the close cross, added last so it sits at the far right of the line */
     public JComponent build(Scale scale, OverlayContent content, JComponent trailing) {
         final var row = new JPanel();
@@ -69,10 +79,28 @@ public final class HeaderBar {
         }
         row.add(wordmark(scale));
         row.add(Box.createHorizontalGlue());
-        row.add(KeyChip.of(scale, content.hotkeys().getOrDefault(Feature.OVERLAY, "")));
+        row.add(languages(scale, content.language()));
+        row.add(Box.createHorizontalStrut(scale.px(Metrics.GAP + 4)));
+        row.add(KeyChip.of(scale, content.words(), content.hotkeys().getOrDefault(Feature.OVERLAY, "")));
         row.add(Box.createHorizontalStrut(scale.px(Metrics.GAP)));
         row.add(trailing);
         return row;
+    }
+
+    /**
+     * The language selector. In the header because it is about the whole panel and not one card of it,
+     * and labelled by codes, which read the same in every language: a player who picked the wrong one
+     * still finds the way back.
+     */
+    private JComponent languages(Scale scale, Language current) {
+        final var languages = Language.values();
+        final var selector = Segmented.of(scale,
+                Arrays.stream(languages).map(Language::name).toList(),
+                current.ordinal(),
+                index -> actions.changeLanguage(languages[index]));
+        // The row is a BoxLayout, which would stretch the track to the line's height and past its labels.
+        selector.setMaximumSize(selector.getPreferredSize());
+        return selector;
     }
 
     /** The name, spread out — and the whole of the mark when no {@code logo.png} was shipped. */
