@@ -38,8 +38,8 @@ public final class GroupManager {
     private static final Logger log = LoggerFactory.getLogger(GroupManager.class);
 
     /**
-     * How long the game is given to show the invitation. The screen watcher looks at the invited window
-     * alone until then ({@link Requests#expect}), so the box is found within a look of being drawn.
+     * How long the game is given to show the invitation. The screen watcher reads every window at every
+     * look, so the box is found within a look of being drawn.
      */
     private static final Duration CONFIRMATION_TIMEOUT = Duration.ofSeconds(5);
 
@@ -134,8 +134,6 @@ public final class GroupManager {
 
         // Armed before the command goes out: the invitation can be seen before we reach the wait below.
         final var confirmation = expectInvitationFor(invitee.name());
-        // Points the screen at the invitee: on its own round it would reach their box a whole round late.
-        requests.expect(invitee, CONFIRMATION_TIMEOUT);
 
         return sendInvite(inviter, invitee.name())
                 && confirmed(confirmation)

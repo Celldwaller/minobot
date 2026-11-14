@@ -2,7 +2,6 @@ package fr.minobot.core;
 
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Request;
-import fr.minobot.win32.Win32;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,19 +30,13 @@ public final class Requests {
 
     private static final Logger log = LoggerFactory.getLogger(Requests.class);
 
-    /**
-     * Longer than the round the screen watcher makes of every window, so a box left unanswered is not
-     * asked again at each of its looks.
-     */
+    /** Well past a look, so a box left unanswered is not asked again at each of its looks. */
     static final Duration SAME_REQUEST = Duration.ofSeconds(5);
 
     private final List<BiConsumer<GameWindow, Request>> listeners = new CopyOnWriteArrayList<>();
     private final Executor dispatcher;
     private final LongSupplier nanos;
     private final Sightings<Long, Request> sightings;
-
-    /** The window a request is awaited on, and until when; {@code null} when none is. */
-    private volatile Awaited awaited;
 
     public Requests() {
         this(Executors.newVirtualThreadPerTaskExecutor(), System::nanoTime);
@@ -65,22 +58,6 @@ public final class Requests {
         listeners.add(listener);
     }
 
-    /**
-     * A request is about to be made of {@code receiver} — the invitation relay has just sent it, or its
-     * toast has just come. Until it is seen there, or {@code within} runs out, the screen watcher looks at that window and no other: left
-     * to its round, it reaches the window a whole round late — two seconds with eight characters, at
-     * every step of the relay.
-     */
-    public void expect(GameWindow receiver, Duration within) {
-        awaited = new Awaited(receiver.hwnd(), nanos.getAsLong() + within.toNanos());
-    }
-
-    /** The window a request is awaited on, or {@link Win32#NULL_HANDLE} when none is. */
-    public long awaited() {
-        final var current = awaited;
-        return current == null || nanos.getAsLong() - current.until() > 0 ? Win32.NULL_HANDLE : current.hwnd();
-    }
-
     /** A source saw {@code request} made of {@code receiver} — or still saw it waiting there. */
     public void report(GameWindow receiver, Request request) {
         report(receiver, request, nanos.getAsLong());
@@ -89,10 +66,6 @@ public final class Requests {
     /** The same, from a source that knows when it saw the request — {@code seenAt} on the {@code nanos} clock. */
     public void report(GameWindow receiver, Request request, long seenAt) {
         final var seen = new Request(request.kind(), request.asker().toLowerCase(Locale.ROOT));
-        final var current = awaited;
-        if (current != null && current.hwnd() == receiver.hwnd()) {
-            awaited = null;
-        }
         if (sightings.isNew(receiver.hwnd(), seen)) {
             log.debug("'{}' asks '{}': {}.", request.asker(), receiver.name(), request.kind());
             listeners.forEach(listener -> dispatcher.execute(() -> tell(listener, receiver, request, seenAt)));
@@ -117,8 +90,5 @@ public final class Requests {
         } catch (RuntimeException e) {
             log.error("Error in a request listener.", e);
         }
-    }
-
-    private record Awaited(long hwnd, long until) {
     }
 }

@@ -3,7 +3,6 @@ package fr.minobot.core.vision;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.win32.Frame;
-import fr.minobot.win32.Win32;
 import fr.minobot.win32.Win32Exception;
 import fr.minobot.win32.WindowApi;
 import org.slf4j.Logger;
@@ -17,22 +16,23 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
-import java.util.function.LongSupplier;
 
 /**
- * Looks at the characters' windows, one per {@link #POLL}, in turn, and hands each frame to every
- * {@link ScreenReader}.
+ * Looks at the characters' windows every {@link #POLL}, and hands each frame to the {@link ScreenReader}s
+ * that read it.
  *
- * <p>In turn, because what is read is not all in the same place. The banner that opens a fight turn is
- * drawn in every window, so it is caught at every look, whichever window it is — twenty times over
- * the second it stands. A request is drawn only in the window of the character asked, and stays until it is
- * answered, so it is caught once the round comes to that window: 400 ms for eight characters.
+ * <p>Not every reader reads every window, because what is read is not all in the same place. The banner
+ * that opens a fight turn is drawn in every window, so it is read in one window a look, in turn — caught
+ * at every look, whichever window it is, twenty times over the second it stands; read in all of them, it
+ * would be the same banner put through the OCR eight times. A request is drawn only in the window of the
+ * character asked, so it is read in every window at every look, and heard within a look of being drawn,
+ * however many characters there are.
  *
  * <p>One frame a window and a look, whatever the number of readers, each of which copies out the one region it reads
  * and checks a few pixels of it before it asks the OCR anything. The frame is the compositor's, already
  * drawn: taking it costs about 0.2 ms and a region 0.3 ms, where having a 2560 px window paint itself
- * cost 20 (measured: see {@link LookTimes}). A window that cannot be read — minimized — gives its look to
- * the next one.
+ * cost 20 (measured: see {@link LookTimes}). A window that cannot be read — minimized — gives its turn in
+ * the round to the next one.
  *
  * <p>What is read in one window only, and must not miss a beat, is {@link Pinned} to it: read at every
  * look, whichever window the round is at — the fight log in the chat, which scrolls away under a spell
@@ -46,10 +46,9 @@ public final class ScreenWatcher {
     /**
      * A turn is only heard of once a look catches its banner, so half a pace is what every auto-pass waits
      * on average before anything else; a cast is only heard of while its line is still in the chat — from
-     * the half second of its animation until the damage it deals pushes it out; and a trade or a duel
-     * started by the player by hand is only heard of once the round reaches the window it is drawn in,
-     * nothing having said where to look. A look costs one to two milliseconds, its OCR aside: the watching
-     * thread is idle almost all of the time, in a fight or not.
+     * the half second of its animation until the damage it deals pushes it out; and every step of the
+     * invitation relay waits on the box it is about to be shown. A look costs a few milliseconds, its OCR
+     * aside: the watching thread is idle almost all of the time, in a fight or not.
      */
     static final Duration POLL = Duration.ofMillis(50);
 
@@ -62,9 +61,9 @@ public final class ScreenWatcher {
 
     private final WindowApi api;
     private final WindowManager windows;
-    private final List<ScreenReader> readers;
+    private final List<ScreenReader> round;
+    private final List<ScreenReader> everyWindow;
     private final List<Pinned> pinned;
-    private final LongSupplier awaited;
 
     private final AtomicReference<Thread> thread = new AtomicReference<>();
 
@@ -77,27 +76,22 @@ public final class ScreenWatcher {
     /** Only the watching thread adds to it. */
     private final LookTimes times = new LookTimes();
 
-    public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers) {
-        this(api, windows, readers, () -> Win32.NULL_HANDLE);
+    public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> round) {
+        this(api, windows, round, List.of(), List.of());
     }
 
     /**
-     * @param awaited the window a request is awaited on ({@link Win32#NULL_HANDLE} for none), asked
-     *                before every look
+     * @param round       the readers of one window a look, in turn
+     * @param everyWindow the readers of every window, at every look
+     * @param pinned      the readers of one window each, read at every look
      */
-    public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers,
-                         LongSupplier awaited) {
-        this(api, windows, readers, List.of(), awaited);
-    }
-
-    /** @param pinned the readers of one window each, read at every look */
-    public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> readers, List<Pinned> pinned,
-                         LongSupplier awaited) {
+    public ScreenWatcher(WindowApi api, WindowManager windows, List<ScreenReader> round,
+                         List<ScreenReader> everyWindow, List<Pinned> pinned) {
         this.api = api;
         this.windows = windows;
-        this.readers = List.copyOf(readers);
+        this.round = List.copyOf(round);
+        this.everyWindow = List.copyOf(everyWindow);
         this.pinned = List.copyOf(pinned);
-        this.awaited = awaited;
     }
 
     /**
@@ -151,18 +145,21 @@ public final class ScreenWatcher {
     }
 
     /**
-     * One look: the next character's window in the round, read by every reader. The round follows the
-     * player's character order, the cycler's: the turns of a fight come in roughly that order, so the next
-     * window looked at tends to be the one whose banner comes next.
-     *
-     * <p>A window a request is awaited on is looked at instead, every look, and the round waits: the
-     * relay is held up until its box is seen, and nothing else on screen is.
+     * One look: the next character's window in the round, read by the round's readers, then every window
+     * by the others. The round follows the player's character order, the cycler's: the turns of a fight
+     * come in roughly that order, so the next window looked at tends to be the one whose banner comes next.
      */
     void look() {
         final var characters = windows.orderedWindows().stream().filter(GameWindow::hasCharacterName).toList();
         frames.clear();
         try {
             lookRound(characters);
+            if (!everyWindow.isEmpty()) {
+                for (final var window : characters) {
+                    frame(window).ifPresent(seen -> read(() ->
+                            everyWindow.forEach(reader -> reader.read(window, seen.frame(), seen.at()))));
+                }
+            }
             for (final var reader : pinned) {
                 reader.window().apply(characters).ifPresent(window -> frame(window)
                         .ifPresent(seen -> read(() -> reader.reader().read(window, seen.frame(), seen.at()))));
@@ -174,11 +171,6 @@ public final class ScreenWatcher {
     }
 
     private void lookRound(List<GameWindow> characters) {
-        final var expected = awaited.getAsLong();
-        final var awaitedWindow = characters.stream().filter(window -> window.hwnd() == expected).findFirst();
-        if (awaitedWindow.isPresent() && lookAt(awaitedWindow.get())) {
-            return;
-        }
         for (var tried = 0; tried < characters.size(); tried++) {
             if (lookAt(characters.get(Math.floorMod(next++, characters.size())))) {
                 return;
@@ -189,7 +181,7 @@ public final class ScreenWatcher {
     /** Whether the window's frame could be had, and so was read. */
     private boolean lookAt(GameWindow window) {
         final var seen = frame(window);
-        seen.ifPresent(it -> read(() -> readers.forEach(reader -> reader.read(window, it.frame(), it.at()))));
+        seen.ifPresent(it -> read(() -> round.forEach(reader -> reader.read(window, it.frame(), it.at()))));
         return seen.isPresent();
     }
 
@@ -216,8 +208,8 @@ public final class ScreenWatcher {
     /**
      * What the looks cost, summed over {@link #REPORTED_EVERY} of them and logged at debug: a look runs
      * twenty times a second for the whole session, so its price is measured, not assumed — and a
-     * line per look would drown the log. A look's frames and readings are summed: the round's window and
-     * the pinned ones.
+     * line per look would drown the log. A look's frames and readings are summed over every window it
+     * read: the round's, every window's and the pinned ones.
      */
     private static final class LookTimes {
 

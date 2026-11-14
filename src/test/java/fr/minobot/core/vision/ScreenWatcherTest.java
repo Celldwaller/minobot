@@ -3,14 +3,12 @@ package fr.minobot.core.vision;
 import fr.minobot.app.TestConfigs;
 import fr.minobot.core.WindowManager;
 import fr.minobot.win32.FakeWindowApi;
-import fr.minobot.win32.Win32;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static fr.minobot.core.vision.BannerCaptures.blank;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,21 +62,38 @@ class ScreenWatcherTest {
     }
 
     @Test
-    @DisplayName("a window a request is awaited on is looked at every look, and the round then resumes")
-    void looksAtTheAwaitedWindow() {
+    @DisplayName("the readers of every window read every window at every look, beside the round")
+    void readsEveryWindowAtEveryLook() {
         final var api = threeCharacters();
         final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
-        final var awaited = new AtomicLong(Win32.NULL_HANDLE);
-        final var watcher = new ScreenWatcher(api, windows, List.of(recorder), awaited::get);
+        final var everywhere = new CopyOnWriteArrayList<String>();
+        final var watcher = new ScreenWatcher(api, windows, List.of(recorder),
+                List.of((window, _, _) -> everywhere.add(window.name())), List.of());
 
         watcher.look();
-        awaited.set(3);
-        watcher.look();
-        watcher.look();
-        awaited.set(Win32.NULL_HANDLE);
         watcher.look();
 
-        assertThat(read).containsExactly("Alpha", "Delta", "Delta", "Bravo");
+        assertThat(read).containsExactly("Alpha", "Bravo");
+        assertThat(everywhere).containsExactly("Alpha", "Bravo", "Delta", "Alpha", "Bravo", "Delta");
+    }
+
+    @Test
+    @DisplayName("a window looked at by the round and by every reader gives one frame to both")
+    void takesOneFrameAWindowAndALook() {
+        final var api = threeCharacters();
+        final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
+        final var frames = new CopyOnWriteArrayList<Object>();
+        final var watcher = new ScreenWatcher(api, windows, List.of((_, frame, _) -> frames.add(frame)),
+                List.of((window, frame, _) -> {
+                    if (window.name().equals("Alpha")) {
+                        frames.add(frame);
+                    }
+                }), List.of());
+
+        watcher.look();
+
+        assertThat(frames).hasSize(2);
+        assertThat(frames.get(0)).isSameAs(frames.get(1));
     }
 
     @Test
@@ -151,10 +166,9 @@ class ScreenWatcherTest {
         final var api = threeCharacters();
         final var windows = new WindowManager(api, TestConfigs.settings(Map.of()));
         final var pinned = new CopyOnWriteArrayList<String>();
-        final var watcher = new ScreenWatcher(api, windows, List.of(recorder),
+        final var watcher = new ScreenWatcher(api, windows, List.of(recorder), List.of(),
                 List.of(new ScreenWatcher.Pinned(characters -> characters.stream().findFirst(),
-                        (window, _, _) -> pinned.add(window.name()))),
-                () -> Win32.NULL_HANDLE);
+                        (window, _, _) -> pinned.add(window.name()))));
 
         for (var look = 0; look < 3; look++) {
             watcher.look();

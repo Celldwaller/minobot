@@ -127,15 +127,14 @@ public final class MinobotApp {
         if (ocr.isEmpty()) {
             log.warn("No Windows OCR language for this user: turns, requests and casts will not be heard.");
         }
-        this.screenWatcher = ocr.map(reader -> new ScreenWatcher(api, windowManager, List.of(
-                        ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns),
-                        ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests)),
+        this.screenWatcher = ocr.map(reader -> new ScreenWatcher(api, windowManager,
+                List.of(ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns)),
+                List.of(ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests)),
                 List.of(new ScreenWatcher.Pinned(characters -> characters.stream().findFirst(),
                                 ScreenReader.fightLog(new ChatLog(reader), fightLog, fightTurns::inFight)),
                         new ScreenWatcher.Pinned(characters -> characters.stream()
                                 .filter(window -> window.hwnd() == api.foregroundWindow()).findFirst(),
-                                ScreenReader.spellBar(spellBars))),
-                requests::awaited));
+                                ScreenReader.spellBar(spellBars)))));
 
         this.multiClicker = new MultiWindowClicker(
                 api, windowManager, focusManager, flashSuppressor, settings, activityLog);
