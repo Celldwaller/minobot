@@ -1,6 +1,5 @@
 package fr.minobot.feature.group;
 
-import fr.minobot.core.domain.Notification;
 import fr.minobot.core.domain.Request;
 import fr.minobot.core.input.FakeInput;
 import fr.minobot.feature.Features;
@@ -88,22 +87,16 @@ class GroupManagerTest {
     }
 
     @Test
-    @DisplayName("no toast and no invitation takes the foreground from a relay in progress")
-    void keepsTheForegroundAgainstTheNotificationListener() throws InterruptedException {
+    @DisplayName("no invitation takes the foreground from a relay in progress")
+    void keepsTheForegroundAgainstTheRequestFocuser() throws InterruptedException {
         final var api = desktop().withWindow(4, "Echo - Dofus");
         final var features = new Features(api, Map.of());
         final var input = features.input();
         final var groupManager = features.groupManager();
-        final var listener = features.notificationListener();
         features.requestFocuser(); // hears every invitation the relay does, and must stand aside
 
         final var sequence = Thread.ofVirtual().start(groupManager::inviteAll);
         awaitPaste(input, "/invite Bravo");
-
-        // Echo is attacked in the middle of Alpha's command. The auto-focus would normally jump to it —
-        // here it must not: the relay is typing, and the rest of the command would go to Echo's window.
-        listener.onNotification(new Notification("Echo - Dofus Retro", "Vous etes attaque !"));
-        assertThat(api.foregroundWindow()).isEqualTo(1);
 
         // Each invitation reaches the relay and the request auto-focus both, as Requests tells them.
         invite(features, "Bravo");

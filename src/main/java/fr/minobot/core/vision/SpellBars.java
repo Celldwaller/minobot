@@ -15,7 +15,7 @@ import java.util.function.LongSupplier;
 public final class SpellBars {
 
     /**
-     * How long a sighting holds. The window looked at is read at every look, every 50 to 250 ms; past
+     * How long a sighting holds. The window looked at is read at every look, every 50 ms; past
      * this, what it showed is not known any more, and a mark is better left off than drawn over a sheet.
      */
     static final Duration FRESH = Duration.ofMillis(600);

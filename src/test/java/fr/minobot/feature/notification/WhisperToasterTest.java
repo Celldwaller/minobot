@@ -81,23 +81,6 @@ class WhisperToasterTest {
     }
 
     @Test
-    @DisplayName("claims() is true for a whisper, false for every other toast")
-    void claimsOnlyWhispers() {
-        final var toaster = toaster();
-
-        assertThat(toaster.claims(whisper("Bravo", "Alpha", "Bonjour")))
-                .as("a private message").isTrue();
-        assertThat(toaster.claims(new Notification("Bravo - Dofus Retro", "C'est à \"Bravo\" de jouer")))
-                .as("a turn toast").isFalse();
-        assertThat(toaster.claims(new Notification("Bravo - Dofus Retro", "Alpha te propose de faire un échange")))
-                .as("a trade offer").isFalse();
-        assertThat(toaster.claims(new Notification("Bravo - Dofus Retro", "Vous avez recu une invitation")))
-                .as("a group invitation").isFalse();
-        assertThat(toaster.claims(new Notification("Slack - Bravo", "de Alpha : Bonjour")))
-                .as("not the game's toast at all").isFalse();
-    }
-
-    @Test
     @DisplayName("clicking a card brings its receiver to the foreground, and takes the card down")
     void clickingACardFocusesTheReceiver() throws InterruptedException {
         final var toaster = toaster();

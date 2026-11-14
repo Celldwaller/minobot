@@ -56,7 +56,7 @@ public final class RequestDialog {
      * The request on screen — empty when there is no box up, or it asks something else.
      *
      * <p>Almost every look finds no box: one row of its title bar says so, and the body — a megabyte of a
-     * 2560 px window, copied at ten looks a second — is only read when the row is there.
+     * 2560 px window, copied at twenty looks a second — is only read when the row is there.
      */
     public Optional<Request> request(Frame frame) {
         final var stage = GameStage.of(frame);
