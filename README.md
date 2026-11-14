@@ -2,6 +2,15 @@
   <img src="assets/minobot.png" alt="Minobot" width="200">
 </p>
 
+<p align="center">
+  <a href="https://github.com/Celldwaller/minobot/releases/latest"><img src="https://img.shields.io/github/v/release/Celldwaller/minobot?sort=semver" alt="Release"></a>
+  <a href="https://github.com/Celldwaller/minobot/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Celldwaller/minobot/release.yml?label=build" alt="Build"></a>
+  <a href="https://github.com/Celldwaller/minobot/releases"><img src="https://img.shields.io/github/downloads/Celldwaller/minobot/total" alt="Downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Celldwaller/minobot" alt="License"></a>
+  <img src="https://img.shields.io/badge/Java-25-orange?logo=openjdk" alt="Java 25">
+  <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Windows">
+</p>
+
 # Minobot
 
 Un logiciel de confort pour **Dofus Retro**, pour les joueurs multi-comptes. Il ne joue pas à votre
