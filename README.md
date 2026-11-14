@@ -136,16 +136,6 @@ pendant le réglage, lui donne une disposition à lui (il faut lui avoir choisi 
 - L'affichage 16:9 du jeu est reconnu, fenêtre par fenêtre : chat à gauche ou à droite, clair ou sombre,
   sorts en grille ou en colonne.
 
-## Réglages avancés (`config.json`)
-
-Créé à côté de `Minobot.exe` au premier lancement. Relancez Minobot après modification.
-
-| Réglage | Rôle |
-| --- | --- |
-| `multiclick_exclude` | Personnages exclus du clic multiple, ex. `["Marchand"]`. |
-| `auto_accept_trade` / `auto_pass_turn` | État des interrupteurs au démarrage. |
-| `log_level` | `"DEBUG"` pour un journal détaillé. |
-
 ## En cas de problème
 
 Le journal est dans **`logs/minobot.log`**, à côté de `Minobot.exe` : joignez-le si vous signalez un
