@@ -20,10 +20,10 @@ place : il reste en fond (icône à côté de l'horloge) et vous évite les mani
 
 | Touche | Ce qu'elle fait |
 | --- | --- |
-| `X1` | **Tous vos personnages cliquent au même endroit** que vous, sans que la fenêtre principale perde le focus. |
-| `Shift+X1` | Éteint le clignotement orange des fenêtres dans la barre des tâches. |
+| `Bouton latéral 1` | **Tous vos personnages cliquent au même endroit** que vous, sans que la fenêtre principale perde le focus. |
+| `Shift+Bouton latéral 1` | Éteint le clignotement orange des fenêtres dans la barre des tâches. |
 | `F8` | **Groupe toute la team** : chacun invite le suivant, qui accepte. |
-| `X2` / `Shift+X2` | Passe au personnage suivant / précédent, dans votre ordre, sur l'écran courant. |
+| `Bouton latéral 2` / `Shift+Bouton latéral 2` | Passe au personnage suivant / précédent, dans votre ordre, sur l'écran courant. |
 | `F9` | Remet les fenêtres dans l'ordre dans la barre des tâches (elles disparaissent un instant, c'est normal). |
 | `Shift+Espace` | Ouvre / ferme l'overlay. |
 | `Shift+clic molette` | Active / coupe **Auto-pass turns**. |
@@ -70,7 +70,7 @@ Pour quitter : clic droit sur l'icône à côté de l'horloge → **Quitter**.
 
 ## L'overlay (`Shift+Espace`, sur une fenêtre de jeu)
 
-- **Vos personnages** : glissez une ligne pour changer l'ordre (utilisé par `X2` et `F9`). Cliquez sur
+- **Vos personnages** : glissez une ligne pour changer l'ordre (utilisé par `Bouton latéral 2` et `F9`). Cliquez sur
   « Pick a class » (ou double-cliquez la ligne) pour choisir classe et sexe. Un personnage configuré reste
   dans la liste même déconnecté ; la petite croix le retire.
 - **Les interrupteurs** Auto-pass turns et Auto-accept trades.
