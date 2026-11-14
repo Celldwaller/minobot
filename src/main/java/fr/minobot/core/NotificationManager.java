@@ -30,7 +30,7 @@ import java.util.function.Consumer;
  * {@code notification_manager.py}.
  *
  * <p>Windows stores every toast in a SQLite file; reading it is how the application learns that a
- * character was invited, attacked or messaged. The read is read-only, on a database Windows keeps in
+ * character was whispered — the one game event not read off the screen. The read is read-only, on a database Windows keeps in
  * WAL mode, which works (proven by the phase 0 spike).
  */
 public final class NotificationManager {
@@ -42,8 +42,8 @@ public final class NotificationManager {
     /** {@code SQLITE_OPEN_READONLY} — sqlite-jdbc's way of opening without claiming a write lock. */
     private static final String READ_ONLY = "1";
 
-    /** The invitation relay waits on these toasts, so the poll has to be quicker than the player. */
-    private static final long POLL_MILLIS = 50;
+    /** A whisper card a quarter of a second late is still at once, to a player reading the chat. */
+    private static final long POLL_MILLIS = 250;
 
     /** Windows purges the table as toasts are dismissed; it never holds anywhere near this many. */
     private static final int BATCH_SIZE = 10;
@@ -136,8 +136,8 @@ public final class NotificationManager {
      * Adopts the newest notification without dispatching it.
      *
      * <p>The database holds the toasts of the last few minutes. Starting from {@code lastId = 0}
-     * replays them all on launch — the application would grab the focus over
-     * a group invitation that has long expired.
+     * replays them all on launch — the application would raise a card for
+     * every whisper of the last few minutes, long since read.
      */
     private void primeLastId(Connection connection) {
         for (final var toast : readBatch(connection)) {
