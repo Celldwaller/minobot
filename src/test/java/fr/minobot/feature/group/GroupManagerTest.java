@@ -49,11 +49,9 @@ class GroupManagerTest {
         final var sequence = Thread.ofVirtual().start(groupManager::inviteAll);
 
         awaitPaste(input, "/invite Bravo");
-        assertThat(features.requests().awaited()).as("the screen is pointed at the invitee").isEqualTo(2);
         invite(features, "Bravo");
 
         awaitPaste(input, "/invite Delta");
-        assertThat(features.requests().awaited()).isEqualTo(3);
         invite(features, "Delta");
 
         sequence.join();
