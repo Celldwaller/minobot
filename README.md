@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
-    <img src="assets/banner-light.svg" alt="Minobot — pilotez toute votre team Dofus Retro" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
+    <img src="assets/banner-light.png" alt="Minobot — toute votre team Dofus Retro sous la main" width="100%">
   </picture>
 </p>
 
