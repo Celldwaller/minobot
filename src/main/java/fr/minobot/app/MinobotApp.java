@@ -22,6 +22,7 @@ import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
 import fr.minobot.feature.notification.WhisperToaster;
 import fr.minobot.feature.overlay.OverlayController;
+import fr.minobot.feature.window.LoadingReloader;
 import fr.minobot.feature.window.MultiWindowClicker;
 import fr.minobot.feature.window.WindowCycler;
 import fr.minobot.feature.window.WindowMaximizer;
@@ -84,6 +85,7 @@ public final class MinobotApp {
     private final WindowCycler windowCycler;
     private final WindowReorder windowReorder;
     private final WindowMaximizer windowMaximizer;
+    private final LoadingReloader loadingReloader;
     private final GroupManager groupManager;
     private final OverlayController overlay;
 
@@ -148,6 +150,7 @@ public final class MinobotApp {
         this.windowCycler = new WindowCycler(api, windowManager, focusManager, activityLog);
         this.windowReorder = new WindowReorder(api, windowManager, focusManager, activityLog);
         this.windowMaximizer = new WindowMaximizer(api, windowManager, activityLog);
+        this.loadingReloader = new LoadingReloader(api, windowManager, activityLog);
         this.groupManager = new GroupManager(
                 windowManager, inputSimulator, focusManager, requests, activityLog);
         final var spellLayouts = new SpellLayouts(dataDirectory.resolve("spell-layouts.json"));
@@ -281,6 +284,7 @@ public final class MinobotApp {
         notificationManager.start();
         screenWatcher.ifPresent(ScreenWatcher::start);
         windowMaximizer.start();
+        loadingReloader.start();
         keyboardMonitor.start();
 
         log.info("=== Application services ready ===");
@@ -299,6 +303,7 @@ public final class MinobotApp {
         notificationManager.stop();
         screenWatcher.ifPresent(ScreenWatcher::stop);
         windowMaximizer.stop();
+        loadingReloader.stop();
         ocr.ifPresent(WindowsOcr::close);
         flashSuppressor.restore();
         systemTray.stop();

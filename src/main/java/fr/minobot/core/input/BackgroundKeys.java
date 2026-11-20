@@ -4,6 +4,7 @@ import fr.minobot.win32.Win32;
 import fr.minobot.win32.WindowApi;
 
 import java.time.Duration;
+import java.util.List;
 
 /**
  * Presses a key in a game window that does not hold the keyboard, without giving it the screen — what
@@ -33,12 +34,36 @@ public final class BackgroundKeys {
      * @return whether the window was told it is active and the key posted to it
      */
     public boolean press(long hwnd, int virtualKey, int scanCode) {
+        return chord(hwnd, List.of(new Key(virtualKey, scanCode)));
+    }
+
+    /**
+     * Presses the key with {@code CONTROL} held, as {@link #press} does the key alone. Must be called
+     * from a platform thread (see {@link WindowApi#whileKeyHeld}).
+     *
+     * @return whether the window's {@code CONTROL} was held, the window told it is active and the keys
+     *         posted to it
+     */
+    public boolean pressWithControl(long hwnd, int virtualKey, int scanCode) {
+        return api.whileKeyHeld(hwnd, Win32.VK_CONTROL, () -> chord(hwnd,
+                List.of(new Key(Win32.VK_CONTROL, Win32.SCAN_CONTROL), new Key(virtualKey, scanCode))));
+    }
+
+    /** The keys pressed in order, and released in the reverse one. */
+    private boolean chord(long hwnd, List<Key> keys) {
         if (!api.sendMessage(hwnd, Win32.WM_ACTIVATE, Win32.WA_ACTIVE, 0)) {
             return false;
         }
         try {
-            final var posted = api.postMessage(hwnd, Win32.WM_KEYDOWN, virtualKey, Win32.keyLParam(scanCode, false))
-                    && api.postMessage(hwnd, Win32.WM_KEYUP, virtualKey, Win32.keyLParam(scanCode, true));
+            var posted = true;
+            for (final var key : keys) {
+                posted = posted && api.postMessage(hwnd, Win32.WM_KEYDOWN, key.virtualKey(),
+                        Win32.keyLParam(key.scanCode(), false));
+            }
+            for (final var key : keys.reversed()) {
+                posted = posted && api.postMessage(hwnd, Win32.WM_KEYUP, key.virtualKey(),
+                        Win32.keyLParam(key.scanCode(), true));
+            }
             Thread.sleep(KEY_READ);
             return posted;
         } catch (InterruptedException e) {
@@ -47,5 +72,8 @@ public final class BackgroundKeys {
         } finally {
             api.sendMessage(hwnd, Win32.WM_ACTIVATE, Win32.WA_INACTIVE, 0);
         }
+    }
+
+    private record Key(int virtualKey, int scanCode) {
     }
 }

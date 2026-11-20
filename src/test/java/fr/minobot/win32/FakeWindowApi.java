@@ -10,6 +10,7 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BooleanSupplier;
 
 /**
  * An in-memory desktop.
@@ -345,6 +346,27 @@ public final class FakeWindowApi implements WindowApi {
     public boolean isKeyDown(int virtualKey) {
         return keysDown.contains(virtualKey);
     }
+
+    /** Records the key as held in the window's thread among the messages: see {@link #HELD}. */
+    @Override
+    public boolean whileKeyHeld(long hwnd, int virtualKey, BooleanSupplier action) {
+        if (!isWindow(hwnd)) {
+            return false;
+        }
+        posted.add(new PostedMessage(hwnd, HELD, virtualKey, 0, true));
+        try {
+            return action.getAsBoolean();
+        } finally {
+            posted.add(new PostedMessage(hwnd, LET_GO, virtualKey, 0, true));
+        }
+    }
+
+    /**
+     * Not messages at all: where in the run of messages {@link #whileKeyHeld} set a window's key down —
+     * the key in {@code wparam} — and put it back.
+     */
+    public static final int HELD = -1;
+    public static final int LET_GO = -2;
 
     @Override
     public Optional<Point> cursorPosition() {

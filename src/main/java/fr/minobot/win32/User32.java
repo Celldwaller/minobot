@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.BooleanSupplier;
 
 /**
  * The real {@link WindowApi}: {@code user32.dll} called through the FFM API
@@ -140,6 +141,18 @@ public final class User32 implements WindowApi {
                     ValueLayout.JAVA_INT));
     private static final MethodHandle GetWindowThreadProcessId =downcall("GetWindowThreadProcessId",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+    private static final MethodHandle AttachThreadInput = downcall("AttachThreadInput",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_INT));
+    private static final MethodHandle GetKeyboardState = downcall("GetKeyboardState",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    private static final MethodHandle SetKeyboardState = downcall("SetKeyboardState",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    private static final MethodHandle GetCurrentThreadId = kernel32("GetCurrentThreadId",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT));
+
+    /** {@code GetKeyboardState} fills one byte per virtual key. */
+    private static final int KEYBOARD_STATE_SIZE = 256;
 
     /** {@code HANDLE OpenProcess(DWORD access, BOOL inherit, DWORD pid)} — the HANDLE is a 64-bit value. */
     private static final MethodHandle OpenProcess = kernel32("OpenProcess",
@@ -670,6 +683,78 @@ public final class User32 implements WindowApi {
             return (state & Win32.KEY_DOWN_MASK) != 0;
         } catch (Throwable t) {
             throw failure("GetAsyncKeyState", t);
+        }
+    }
+
+    /**
+     * Attached to the window's thread, the two threads share one key state: setting it here sets it
+     * there. Measured against the game's loading error: {@code CTRL+R} posted alone reloads nothing;
+     * posted with {@code CONTROL} set this way, it reloads the window.
+     */
+    @Override
+    public boolean whileKeyHeld(long hwnd, int virtualKey, BooleanSupplier action) {
+        if (Thread.currentThread().isVirtual()) {
+            throw new IllegalStateException("A key state is attached from a platform thread only");
+        }
+        final var windowThread = windowThreadId(hwnd);
+        final var self = currentThreadId();
+        if (windowThread == 0 || !attachThreadInput(self, windowThread, true)) {
+            return false;
+        }
+        try (final var arena = Arena.ofConfined()) {
+            final var state = arena.allocate(KEYBOARD_STATE_SIZE);
+            if (!keyboardState(state, false)) {
+                return false;
+            }
+            final var before = state.get(ValueLayout.JAVA_BYTE, virtualKey);
+            state.set(ValueLayout.JAVA_BYTE, virtualKey, Win32.KEY_STATE_DOWN);
+            if (!keyboardState(state, true)) {
+                return false;
+            }
+            try {
+                return action.getAsBoolean();
+            } finally {
+                state.set(ValueLayout.JAVA_BYTE, virtualKey, before);
+                keyboardState(state, true);
+            }
+        } finally {
+            attachThreadInput(self, windowThread, false);
+        }
+    }
+
+    private static int windowThreadId(long hwnd) {
+        try {
+            return (int) GetWindowThreadProcessId.invokeExact(hwnd, MemorySegment.NULL);
+        } catch (Throwable t) {
+            throw failure("GetWindowThreadProcessId", t);
+        }
+    }
+
+    private static int currentThreadId() {
+        try {
+            return (int) GetCurrentThreadId.invokeExact();
+        } catch (Throwable t) {
+            throw failure("GetCurrentThreadId", t);
+        }
+    }
+
+    private static boolean attachThreadInput(int thread, int to, boolean attach) {
+        try {
+            return (int) AttachThreadInput.invokeExact(thread, to, attach ? 1 : 0) != 0;
+        } catch (Throwable t) {
+            throw failure("AttachThreadInput", t);
+        }
+    }
+
+    /** Reads the attached threads' key state into the buffer, or writes the buffer into it. */
+    private static boolean keyboardState(MemorySegment state, boolean write) {
+        try {
+            if (write) {
+                return (int) SetKeyboardState.invokeExact(state) != 0;
+            }
+            return (int) GetKeyboardState.invokeExact(state) != 0;
+        } catch (Throwable t) {
+            throw failure(write ? "SetKeyboardState" : "GetKeyboardState", t);
         }
     }
 

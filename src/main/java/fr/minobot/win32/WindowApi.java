@@ -3,6 +3,7 @@ package fr.minobot.win32;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.BooleanSupplier;
 
 /**
  * Every Win32 call the application makes, behind one interface.
@@ -122,6 +123,20 @@ public interface WindowApi {
 
     /** Whether the key is held down right now, polled rather than queued ({@code GetAsyncKeyState}). */
     boolean isKeyDown(int virtualKey);
+
+    /**
+     * Runs the action while the window's thread reads the key as held down, and puts its key state back
+     * after — what a modifier posted to a window needs: the window reads {@code CONTROL} off its thread's
+     * key state, which a posted message does not move.
+     *
+     * <p>The caller must be a platform thread: the window's key state is reached by attaching the
+     * caller's thread to the window's, and a virtual thread may change carriers in the middle.
+     *
+     * @param virtualKey a {@code Win32.VK_*} constant
+     * @return what the action returned; {@code false}, without running it, when the key state could not
+     *         be reached — a stale handle, a window that refuses the attachment
+     */
+    boolean whileKeyHeld(long hwnd, int virtualKey, BooleanSupplier action);
 
     /** The mouse cursor's screen position. */
     Optional<Point> cursorPosition();
