@@ -11,8 +11,8 @@ import java.util.List;
  * What Minobot has just been doing, kept so the panel can show it.
  *
  * <p>Every feature here acts <strong>while the player is looking at something else</strong> — that is the
- * whole point of them. A turn ends in a window the player is not on, a trade is accepted in a blink, a
- * relay walks eight characters. Left with nothing but the result, the player is asked to trust that the
+ * whole point of them. A turn ends in a window the player is not on, a trade is accepted in the
+ * background, a relay walks eight characters. Left with nothing but the result, the player is asked to trust that the
  * right thing happened; a short list of what happened is the difference between a tool and a black box.
  * The log file says all of this already, but a log file is not something a player reads mid-fight.
  *

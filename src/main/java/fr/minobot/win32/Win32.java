@@ -97,6 +97,10 @@ public final class Win32 {
     public static final int VK_A = 0x41;
     public static final int VK_Z = 0x5A;
 
+    // Scan codes, the same on every keyboard layout
+    public static final int SCAN_ESCAPE = 0x01;
+    public static final int SCAN_RETURN = 0x1C;
+
     /** {@code F1} through {@code F12} are contiguous from here. */
     public static final int VK_F1 = 0x70;
 

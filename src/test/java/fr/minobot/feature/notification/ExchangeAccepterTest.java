@@ -3,10 +3,13 @@ package fr.minobot.feature.notification;
 import fr.minobot.core.domain.Request;
 import fr.minobot.feature.Features;
 import fr.minobot.win32.FakeWindowApi;
+import fr.minobot.win32.FakeWindowApi.PostedMessage;
+import fr.minobot.win32.Win32;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -16,8 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Which trades accept themselves, which are left to the player — and how the request auto-focus is kept
  * from fighting the accept.
  *
- * <p>Focusing a background window makes the real {@link fr.minobot.core.FocusManager} sleep through its
- * ALT dance, so the timeout is generous, like the invitation relay's tests.
+ * <p>The stranger's trade still brings its receiver up through the real {@link fr.minobot.core.FocusManager},
+ * which sleeps through its ALT dance, so the timeout is generous, like the invitation relay's tests.
  */
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 class ExchangeAccepterTest {
@@ -35,23 +38,29 @@ class ExchangeAccepterTest {
 
     private static final Map<String, Object> ON = Map.of("auto_accept_trade", true);
 
+    /** The windows ENTER was released in, in the background. */
+    private static List<Long> accepted(FakeWindowApi api) {
+        return api.postedMessages().stream()
+                .filter(message -> message.message() == Win32.WM_KEYUP && message.wparam() == Win32.VK_RETURN)
+                .map(PostedMessage::hwnd)
+                .toList();
+    }
+
     @Test
-    @DisplayName("a trade between two of our characters is accepted, and the screen handed back")
+    @DisplayName("a trade between two of our characters is accepted in the background")
     void acceptsAnInternalTradeInPlace() {
         final var api = desktop().withForeground(1); // the player opened the trade from Alpha
         final var features = new Features(api, ON);
 
         features.exchangeAccepter().onRequest(features.window("Bravo"), tradeFrom("Alpha"));
 
-        assertThat(features.input().actions())
-                .as("Bravo is focused and accepts with ENTER")
-                .contains("key:Enter");
-        assertThat(api.focusedWindows())
-                .as("Bravo came up to accept, then Alpha came back — a blink, not a move")
-                .containsExactly(2L, 1L);
-        assertThat(api.foregroundWindow())
-                .as("the screen is back where the player was")
-                .isEqualTo(1);
+        assertThat(accepted(api)).as("Bravo accepts with ENTER").containsExactly(2L);
+        assertThat(api.postedMessages().getFirst())
+                .as("told it is active first, so the game reads the key")
+                .isEqualTo(new PostedMessage(2, Win32.WM_ACTIVATE, Win32.WA_ACTIVE, 0, true));
+        assertThat(api.focusedWindows()).as("no window took the screen").isEmpty();
+        assertThat(features.input().actions()).isEmpty();
+        assertThat(api.foregroundWindow()).isEqualTo(1);
     }
 
     @Test
@@ -65,9 +74,7 @@ class ExchangeAccepterTest {
         features.requests().report(features.window("Bravo"), tradeFrom("Zoro"));
 
         assertThat(api.foregroundWindow()).as("the receiver is brought up").isEqualTo(2);
-        assertThat(features.input().actions())
-                .as("but nothing is accepted on a stranger's behalf")
-                .doesNotContain("key:Enter");
+        assertThat(accepted(api)).as("but nothing is accepted on a stranger's behalf").isEmpty();
     }
 
     @Test
@@ -79,9 +86,8 @@ class ExchangeAccepterTest {
 
         features.requests().report(features.window("Bravo"), tradeFrom("Alpha"));
 
-        assertThat(api.focusedWindows())
-                .as("only the accept's own focus of Bravo then Alpha — the auto-focus added nothing")
-                .containsExactly(2L, 1L);
+        assertThat(accepted(api)).containsExactly(2L);
+        assertThat(api.focusedWindows()).as("the auto-focus took no window up").isEmpty();
         assertThat(api.foregroundWindow()).isEqualTo(1);
     }
 
@@ -95,7 +101,7 @@ class ExchangeAccepterTest {
         features.requests().report(features.window("Bravo"), tradeFrom("Alpha"));
         features.requests().report(features.window("Bravo"), tradeFrom("Alpha"));
 
-        assertThat(features.input().actions()).containsOnlyOnce("key:Enter");
+        assertThat(accepted(api)).containsExactly(2L);
     }
 
     @Test
@@ -135,7 +141,7 @@ class ExchangeAccepterTest {
 
         accepter.onRequest(features.window("Bravo"), tradeFrom("Alpha"));
 
-        assertThat(features.input().actions()).isEmpty();
+        assertThat(api.postedMessages()).isEmpty();
         assertThat(api.focusedWindows()).isEmpty();
         assertThat(accepter.claims(features.window("Bravo"), tradeFrom("Alpha")))
                 .as("off means the auto-focus keeps every request")

@@ -147,7 +147,7 @@ public final class Features {
     }
 
     public ExchangeAccepter exchangeAccepter() {
-        return new ExchangeAccepter(api, windows, input, focus, requests, settings, activity);
+        return new ExchangeAccepter(api, windows, requests, settings, activity);
     }
 
     /** Where the screen reports every request, and every request feature listens. */

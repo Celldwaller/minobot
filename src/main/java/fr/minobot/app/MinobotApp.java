@@ -169,8 +169,7 @@ public final class MinobotApp {
 
         // Answers a trade between two of the player's own characters in place. Built before the
         // request auto-focus so it can consult it and stand aside for the trades it takes.
-        final var exchangeAccepter = new ExchangeAccepter(api, windowManager, inputSimulator,
-                focusManager, requests, settings, activityLog);
+        final var exchangeAccepter = new ExchangeAccepter(api, windowManager, requests, settings, activityLog);
 
         // Shows a whisper as a quiet toast at the left of the game rather than pulling the screen to it,
         // and writes it to the whisper log so the panel can still list it once the card has faded.
