@@ -6,7 +6,7 @@
 
     <groupId>fr.minobot</groupId>
     <artifactId>minobot</artifactId>
-    <version>1.10.0</version>
+    <version>1.10.1</version>
     <packaging>jar</packaging>
 
     <name>Minobot</name>
@@ -29,7 +29,7 @@
         <dist.modules>java.base,java.desktop,java.naming,java.net.http,java.sql,java.xml,jdk.unsupported</dist.modules>
 
         <!-- jpackage only accepts a numeric version, so it cannot reuse the SNAPSHOT one. -->
-        <dist.version>1.10.0</dist.version>
+        <dist.version>1.10.1</dist.version>
 
         <sqlite.version>3.50.3.0</sqlite.version>
         <jsvg.version>2.1.0</jsvg.version>
