@@ -50,6 +50,16 @@ Et automatiquement :
   accepté tout seul. Celui d'un autre joueur ne l'est jamais.
 - **Auto-pass turns** (désactivé par défaut) : passe le tour de **tous** vos personnages. Une pastille
   orange reste affichée tant que c'est actif ; son bouton « Turn off » coupe la fonction.
+  **Prérequis :** Minobot repère le début de chaque tour grâce à l'illustration que le jeu affiche, il faut
+  donc que votre personnage principal l'affiche même quand sa fenêtre est en arrière-plan. Dans ses
+  options, onglet **Optimisations**, section *Comportement en arrière-plan*, **décochez « Masquer
+  l'illustration de début de tour »**.
+
+  <p align="center">
+    <img src="assets/game_options_turn_illustration.png" alt="Options du jeu, onglet Optimisations : « Masquer l'illustration de début de tour » décoché" width="50%"><br>
+    <sub><b>Options › Optimisations</b> — l'option encadrée en rouge doit rester décochée</sub>
+  </p>
+
 - **Les messages privés** s'affichent dans une petite carte au lieu de vous faire changer de fenêtre ;
   cliquez dessus pour aller sur le personnage concerné.
 
