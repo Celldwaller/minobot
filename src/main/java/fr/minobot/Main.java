@@ -16,6 +16,10 @@ public final class Main {
     private static final int LOCK_PORT = 12345;
 
     static void main() {
+        // The packaged application has no console: an error that ends a thread is written nowhere else.
+        Thread.setDefaultUncaughtExceptionHandler((thread, error) ->
+                log.error("Thread '{}' died of an uncaught error.", thread.getName(), error));
+
         try (final var lock = acquireInstanceLock()) {
             if (lock == null) {
                 log.error("Another Minobot instance already holds port {}. Exiting.", LOCK_PORT);

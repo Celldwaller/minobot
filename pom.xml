@@ -335,14 +335,16 @@
                                           and a heap of a quarter of the RAM, and keeps what it grew to.
                                           Measured watching eight windows in a fight, the application
                                           allocates under 1 MB a second; the serial collector in a heap
-                                          capped at 128 MB, starting at 32, holds it with room to spare.
+                                          starting at 32 MB holds it. The cap leaves room for the bursts:
+                                          a window painted whole is 14 MB at 2560 px, and at 128 MB a look
+                                          that held eight of them killed the screen watcher.
                                         -->
                                         <argument>--java-options</argument>
                                         <argument>-XX:+UseSerialGC</argument>
                                         <argument>--java-options</argument>
                                         <argument>-Xms32m</argument>
                                         <argument>--java-options</argument>
-                                        <argument>-Xmx128m</argument>
+                                        <argument>-Xmx256m</argument>
                                     </arguments>
                                 </configuration>
                             </execution>

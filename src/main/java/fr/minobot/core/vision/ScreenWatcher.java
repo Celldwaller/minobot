@@ -148,9 +148,15 @@ public final class ScreenWatcher {
      * One look: the next character's window in the round, read by the round's readers, then every window
      * by the others. The round follows the player's character order, the cycler's: the turns of a fight
      * come in roughly that order, so the next window looked at tends to be the one whose banner comes next.
+     *
+     * <p>A frame is kept through the look only for a pinned reader still to read it. Until the compositor
+     * delivers a window's first frame, the window is painted whole — 14 MB at 2560 px — and eight of them
+     * held at once filled the heap and killed this thread.
      */
     void look() {
         final var characters = windows.orderedWindows().stream().filter(GameWindow::hasCharacterName).toList();
+        final var pinnedWindows = pinned.stream().map(reader -> reader.window().apply(characters)).toList();
+        final var kept = pinnedWindows.stream().flatMap(Optional::stream).map(GameWindow::hwnd).toList();
         frames.clear();
         try {
             lookRound(characters);
@@ -158,11 +164,15 @@ public final class ScreenWatcher {
                 for (final var window : characters) {
                     frame(window).ifPresent(seen -> read(() ->
                             everyWindow.forEach(reader -> reader.read(window, seen.frame(), seen.at()))));
+                    if (!kept.contains(window.hwnd())) {
+                        frames.remove(window.hwnd());
+                    }
                 }
             }
-            for (final var reader : pinned) {
-                reader.window().apply(characters).ifPresent(window -> frame(window)
-                        .ifPresent(seen -> read(() -> reader.reader().read(window, seen.frame(), seen.at()))));
+            for (var i = 0; i < pinned.size(); i++) {
+                final var reader = pinned.get(i).reader();
+                pinnedWindows.get(i).ifPresent(window -> frame(window)
+                        .ifPresent(seen -> read(() -> reader.read(window, seen.frame(), seen.at()))));
             }
         } finally {
             frames.clear();
