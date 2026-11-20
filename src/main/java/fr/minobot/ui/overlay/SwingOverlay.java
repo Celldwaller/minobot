@@ -39,7 +39,7 @@ import java.awt.GraphicsEnvironment;
 /**
  * The panel, in Swing — the orchestrator that owns the window and lays the sections out on it. The
  * drawing of each part lives in its own class ({@link HeaderBar}, {@link TeamCard}, {@link ConsoleCard},
- * {@link KeybindsDrawer}, {@link ClassPicker}, {@link SizeSlider}); this wires them onto the
+ * {@link KeybindsDrawer}, {@link ClassPicker}, {@link SizeSlider}, {@link GithubLink}); this wires them onto the
  * {@link Sheet} and keeps the panel's transient state — whether the keybinds drawer is open, and which
  * character the class picker is open for.
  *
@@ -92,6 +92,7 @@ public final class SwingOverlay implements OverlayView {
     private KeybindsDrawer keybindsDrawer;
     private ClassPicker classPicker;
     private SizeSlider sizeSlider;
+    private GithubLink githubLink;
 
     private JPanel sheet;
     private JPanel keybinds;
@@ -235,6 +236,7 @@ public final class SwingOverlay implements OverlayView {
         keybindsDrawer = new KeybindsDrawer(actions, this::redraw, this::closeKeybinds);
         classPicker = new ClassPicker(actions, classIcons, this::dismissClassPicker, this::chooseClass);
         sizeSlider = new SizeSlider(actions);
+        githubLink = new GithubLink(this::hide);
     }
 
     /**
@@ -251,7 +253,7 @@ public final class SwingOverlay implements OverlayView {
 
     // ------------------------------------------------------------------ the sheet
 
-    /** The panel proper: the header, the team beside the console, and the size at its foot. */
+    /** The panel proper: the header, the team beside the console, and the footer. */
     private JPanel sheet(OverlayContent content) {
         final var padding = px(Metrics.PADDING);
 
@@ -262,8 +264,22 @@ public final class SwingOverlay implements OverlayView {
         card.add(Box.createVerticalStrut(px(Metrics.PADDING)));
         card.add(body(content));
         card.add(Box.createVerticalStrut(px(Metrics.PADDING)));
-        card.add(sizeSlider.build(scale, content.words()));
+        card.add(footer(content));
         return card;
+    }
+
+    /** The project's link in the corner, as a site's footer has it, and the size across from it. */
+    private JComponent footer(OverlayContent content) {
+        final var row = new JPanel();
+        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, px(Metrics.ROW)));
+
+        row.add(githubLink.build(scale));
+        row.add(Box.createHorizontalGlue());
+        row.add(sizeSlider.build(scale, content.words()));
+        return row;
     }
 
     /** The two halves, side by side: the team the player edits, the console it acts through. */
