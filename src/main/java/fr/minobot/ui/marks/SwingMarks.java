@@ -2,11 +2,14 @@ package fr.minobot.ui.marks;
 
 import fr.minobot.ui.MarksActions;
 import fr.minobot.ui.MarksContent;
+import fr.minobot.ui.MarksContent.Guide;
 import fr.minobot.ui.MarksContent.Kind;
 import fr.minobot.ui.MarksContent.Mark;
 import fr.minobot.ui.MarksView;
 import fr.minobot.ui.Theme;
 import fr.minobot.ui.utils.Draw;
+import fr.minobot.ui.utils.Emphasis;
+import fr.minobot.ui.utils.Emphasis.Word;
 import fr.minobot.ui.utils.Fonts;
 import fr.minobot.ui.utils.Metrics;
 import fr.minobot.ui.utils.Scale;
@@ -18,6 +21,7 @@ import javax.swing.SwingUtilities;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsDevice;
@@ -26,6 +30,7 @@ import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The spell marks, in Swing: one window over the whole of the game, see-through but for the marks.
@@ -51,6 +56,11 @@ public final class SwingMarks implements MarksView {
 
     private static final int LABEL_PAD_X = 7;
     private static final int LABEL_PAD_Y = 3;
+
+    /** The setup's card: wide enough for a step on one line, at the panel's scale. */
+    private static final int GUIDE_WIDTH = 460;
+    private static final int GUIDE_PAD = 18;
+    private static final int STEP_GAP = 6;
 
     /** A slot crossed out is dimmed under its cross, so it reads as spent at a glance. */
     private static final Color SPENT = new Color(6, 5, 5, 120);
@@ -119,7 +129,7 @@ public final class SwingMarks implements MarksView {
 
     private final class Marks extends JPanel {
 
-        private MarksContent content = new MarksContent(1, List.of(), "", "");
+        private MarksContent content = new MarksContent(1, List.of(), "", Optional.empty());
 
         /** Where the button was last painted, for the mouse to test against; {@code null} while there is none. */
         private Rectangle button;
@@ -157,8 +167,10 @@ public final class SwingMarks implements MarksView {
                 }
             }
             button = null;
-            if (!content.hint().isBlank()) {
-                paintHint(canvas, scale, content.hint(), content.action());
+            if (content.guide().isPresent()) {
+                paintGuide(canvas, scale, content.guide().get());
+            } else if (!content.hint().isBlank()) {
+                paintHint(canvas, scale, content.hint());
             }
             canvas.dispose();
         }
@@ -208,15 +220,11 @@ public final class SwingMarks implements MarksView {
             canvas.drawString(mark.label(), x + scale.px(LABEL_PAD_X), y + scale.px(LABEL_PAD_Y) + metrics.getAscent());
         }
 
-        /** A pill under the top of the game, and the button inside it at its right end when there is one. */
-        private void paintHint(Graphics2D canvas, Scale scale, String hint, String action) {
+        /** A pill under the top of the game. */
+        private void paintHint(Graphics2D canvas, Scale scale, String hint) {
             final var font = scale.font(Fonts.MEDIUM, Metrics.BODY);
-            final var buttonFont = scale.font(Fonts.SEMIBOLD, Metrics.SMALL);
             final var metrics = canvas.getFontMetrics(font);
-            final var buttonMetrics = canvas.getFontMetrics(buttonFont);
-            final var buttonWidth = action.isBlank() ? 0
-                    : buttonMetrics.stringWidth(action) + 2 * scale.px(BUTTON_PAD_X) + scale.px(Metrics.GAP);
-            final var width = metrics.stringWidth(hint) + buttonWidth + 2 * scale.px(HINT_PAD_X);
+            final var width = metrics.stringWidth(hint) + 2 * scale.px(HINT_PAD_X);
             final var height = metrics.getAscent() + metrics.getDescent() + 2 * scale.px(HINT_PAD_Y);
             final var x = (getWidth() - width) / 2;
             final var y = scale.px(HINT_TOP);
@@ -228,18 +236,145 @@ public final class SwingMarks implements MarksView {
             canvas.setFont(font);
             canvas.setColor(Theme.TEXT_SOFT);
             canvas.drawString(hint, x + scale.px(HINT_PAD_X), y + scale.px(HINT_PAD_Y) + metrics.getAscent());
-            if (action.isBlank()) {
-                return;
+        }
+
+        /**
+         * The setup's card under the top of the game: measured once with nothing drawn, so its surface is
+         * as tall as what it holds, then drawn over that surface.
+         */
+        private void paintGuide(Graphics2D canvas, Scale scale, Guide guide) {
+            final var width = Math.min(scale.px(GUIDE_WIDTH), getWidth() - 2 * scale.px(Metrics.PADDING));
+            final var x = (getWidth() - width) / 2;
+            final var y = scale.px(HINT_TOP);
+            final var height = layGuide(canvas, scale, guide, x, y, width, false) - y;
+
+            final var corner = scale.px(Metrics.RADIUS);
+            canvas.setColor(Theme.BACKGROUND);
+            canvas.fillRoundRect(x, y, width, height, corner, corner);
+            canvas.setColor(Theme.ACCENT_EDGE);
+            canvas.setStroke(new BasicStroke(1));
+            canvas.drawRoundRect(x, y, width - 1, height - 1, corner, corner);
+            layGuide(canvas, scale, guide, x, y, width, true);
+        }
+
+        /** @return the card's bottom edge; nothing is drawn unless {@code draw} */
+        private int layGuide(Graphics2D canvas, Scale scale, Guide guide, int x, int top, int width, boolean draw) {
+            final var pad = scale.px(GUIDE_PAD);
+            final var left = x + pad;
+            final var inner = width - 2 * pad;
+            var y = top + pad;
+
+            // The title, and how far along the player is across from it.
+            final var title = canvas.getFontMetrics(scale.font(Fonts.SEMIBOLD, Metrics.TITLE));
+            final var small = canvas.getFontMetrics(scale.font(Fonts.SEMIBOLD, Metrics.SMALL));
+            if (draw) {
+                canvas.setFont(title.getFont());
+                canvas.setColor(Theme.TEXT);
+                canvas.drawString(guide.title(), left, y + title.getAscent());
+                if (!guide.progress().isBlank()) {
+                    canvas.setFont(small.getFont());
+                    canvas.setColor(Theme.CONNECTED);
+                    canvas.drawString(guide.progress(), left + inner - small.stringWidth(guide.progress()),
+                            y + title.getAscent());
+                }
             }
-            final var buttonHeight = buttonMetrics.getAscent() + buttonMetrics.getDescent() + 2 * scale.px(BUTTON_PAD_Y);
-            button = new Rectangle(x + width - scale.px(HINT_PAD_X) - (buttonWidth - scale.px(Metrics.GAP)),
-                    y + (height - buttonHeight) / 2, buttonWidth - scale.px(Metrics.GAP), buttonHeight);
-            canvas.setColor(Theme.ACCENT);
-            canvas.fillRoundRect(button.x, button.y, button.width, button.height, buttonHeight, buttonHeight);
-            canvas.setFont(buttonFont);
-            canvas.setColor(Theme.TEXT);
-            canvas.drawString(action, button.x + scale.px(BUTTON_PAD_X),
-                    button.y + scale.px(BUTTON_PAD_Y) + buttonMetrics.getAscent());
+            y += title.getHeight();
+
+            final var faint = canvas.getFontMetrics(scale.font(Fonts.REGULAR, Metrics.SMALL));
+            if (draw) {
+                canvas.setFont(faint.getFont());
+                canvas.setColor(Theme.FAINT);
+                canvas.drawString(guide.subtitle(), left, y + faint.getAscent());
+            }
+            y += faint.getHeight() + scale.px(Metrics.GUTTER);
+
+            // The steps, each wrapped under its own text, the numbers in a column of their own.
+            final var body = canvas.getFontMetrics(scale.font(Fonts.REGULAR, Metrics.BODY));
+            final var strong = canvas.getFontMetrics(scale.font(Fonts.SEMIBOLD, Metrics.BODY));
+            final var number = strong.stringWidth(guide.steps().size() + ".") + scale.px(Metrics.GAP);
+            for (var i = 0; i < guide.steps().size(); i++) {
+                if (i > 0) {
+                    y += scale.px(STEP_GAP);
+                }
+                if (draw) {
+                    canvas.setFont(strong.getFont());
+                    canvas.setColor(Theme.ACCENT_HOVER);
+                    canvas.drawString((i + 1) + ".", left, y + body.getAscent());
+                }
+                for (final var line : Emphasis.wrap(guide.steps().get(i), body, strong, inner - number)) {
+                    if (draw) {
+                        words(canvas, line, left + number, y + body.getAscent(), body, strong,
+                                Theme.TEXT_SOFT, Theme.TEXT);
+                    }
+                    y += body.getHeight();
+                }
+            }
+
+            // What Minobot is waiting for, in the accent: the one thing on the card that changes as they play.
+            if (!guide.status().isBlank()) {
+                y += scale.px(Metrics.GUTTER);
+                final var height = small.getHeight() + 2 * scale.px(BUTTON_PAD_Y);
+                if (draw) {
+                    canvas.setColor(Theme.ACCENT_WASH);
+                    canvas.fillRoundRect(left, y, inner, height, height, height);
+                    canvas.setFont(small.getFont());
+                    canvas.setColor(Theme.ACCENT_HOVER);
+                    canvas.drawString(guide.status(), left + scale.px(BUTTON_PAD_X),
+                            y + scale.px(BUTTON_PAD_Y) + small.getAscent());
+                }
+                y += height;
+            }
+
+            // The button, under a rule, with why one would press it.
+            if (!guide.action().isBlank()) {
+                y += scale.px(Metrics.GUTTER);
+                if (draw) {
+                    canvas.setColor(Theme.RULE);
+                    canvas.fillRect(left, y, inner, Math.max(1, scale.px(1)));
+                }
+                y += scale.px(Metrics.GUTTER);
+
+                final var buttonWidth = small.stringWidth(guide.action()) + 2 * scale.px(BUTTON_PAD_X);
+                final var buttonHeight = small.getHeight() + 2 * scale.px(BUTTON_PAD_Y);
+                final var note = Emphasis.wrap(guide.note(), faint, faint,
+                        inner - buttonWidth - scale.px(Metrics.GUTTER));
+                final var rowHeight = Math.max(buttonHeight, note.size() * faint.getHeight());
+                var noteY = y + (rowHeight - note.size() * faint.getHeight()) / 2;
+                for (final var line : note) {
+                    if (draw) {
+                        words(canvas, line, left, noteY + faint.getAscent(), faint, faint, Theme.FAINT, Theme.FAINT);
+                    }
+                    noteY += faint.getHeight();
+                }
+                if (draw) {
+                    button = new Rectangle(left + inner - buttonWidth, y + (rowHeight - buttonHeight) / 2,
+                            buttonWidth, buttonHeight);
+                    canvas.setColor(Theme.ACCENT);
+                    canvas.fillRoundRect(button.x, button.y, button.width, button.height, buttonHeight, buttonHeight);
+                    canvas.setFont(small.getFont());
+                    canvas.setColor(Theme.TEXT);
+                    canvas.drawString(guide.action(), button.x + scale.px(BUTTON_PAD_X),
+                            button.y + scale.px(BUTTON_PAD_Y) + small.getAscent());
+                }
+                y += rowHeight;
+            }
+            return y + pad;
+        }
+
+        /** A line of words one after the other, those that stand out in their own weight and colour. */
+        private static void words(Graphics2D canvas, List<Word> line, int x, int baseline, FontMetrics regular,
+                                  FontMetrics strong, Color color, Color strongColor) {
+            final var space = regular.stringWidth(" ");
+            var at = x;
+            for (var i = 0; i < line.size(); i++) {
+                final var word = line.get(i);
+                at += i > 0 && word.spaced() ? space : 0;
+                final var metrics = word.strong() ? strong : regular;
+                canvas.setFont(metrics.getFont());
+                canvas.setColor(word.strong() ? strongColor : color);
+                canvas.drawString(word.text(), at, baseline);
+                at += metrics.stringWidth(word.text());
+            }
         }
     }
 }

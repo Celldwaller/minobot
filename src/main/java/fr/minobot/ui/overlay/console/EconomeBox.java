@@ -18,7 +18,9 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -55,33 +57,45 @@ public final class EconomeBox {
         final var reset = new SecondaryButton(scale, words.get("econome.reset_setup"));
         reset.addActionListener(_ -> actions.resetSpellSetup());
         final var setup = row(scale, StatePill.of(scale, words, words.get("econome.setup"), content.spellSetup(),
-                actions::toggleSpellSetup), reset);
+                actions::toggleSpellSetup));
+        // Its gap rides inside the row, so a hidden reset takes its gap with it.
+        final var resetting = row(scale, reset);
+        resetting.setBorder(new EmptyBorder(gap, 0, 0, 0));
+        resetting.setMaximumSize(new Dimension(Integer.MAX_VALUE, resetting.getPreferredSize().height));
 
-        // Measured with the reset shown, then hidden if the setup is off: the hint keeps its place
-        // whichever way the switches are flipped, instead of sliding along with the buttons.
         final var controls = Card.plainColumn();
         controls.add(title);
         controls.add(Box.createVerticalStrut(gap));
         controls.add(challenge);
         controls.add(Box.createVerticalStrut(gap));
         controls.add(setup);
+        controls.add(resetting);
+        // Up top when the steps beside them run taller: the rows stay together under the title.
+        controls.add(Box.createVerticalGlue());
         controls.pinnedTo(controls.getPreferredSize().width);
-        reset.setVisible(content.spellSetup());
 
         // The hint takes whatever room the controls leave, in the player's language and at their scale.
-        final var hints = Card.plainColumn();
         final var room = width - controls.getPreferredSize().width - 2 * gap;
-        Hint.wrapped(scale, words.get(hintFor(content)), room).forEach(hints::add);
+        final var hints = steps(scale, words, hintFor(content), room);
+
+        // As tall as the tallest it can be — reset shown, longest steps — so flipping a switch never moves
+        // the activity under it.
+        var tallest = controls.getPreferredSize().height;
+        for (final var key : HINTS) {
+            tallest = Math.max(tallest, steps(scale, words, key, room).getPreferredSize().height);
+        }
+        resetting.setVisible(content.spellSetup());
 
         final var box = new Card(scale, Theme.ROW_QUIET, Theme.EDGE, Metrics.RADIUS);
         box.setLayout(new BoxLayout(box, BoxLayout.X_AXIS));
         box.setAlignmentX(Component.LEFT_ALIGNMENT);
-        box.setBorder(new EmptyBorder(gap, 0, gap, gap));
+        final var padding = scale.px(Metrics.PADDING) - scale.px(Metrics.GAP / 2);
+        box.setBorder(new EmptyBorder(padding, 0, padding, gap));
         box.add(controls);
         box.add(Box.createHorizontalStrut(gap));
         box.add(hints);
         box.add(Box.createHorizontalGlue());
-        return box.pinnedTo(width, box.getPreferredSize().height);
+        return box.pinnedTo(width, tallest + 2 * padding);
     }
 
     /**
@@ -103,11 +117,48 @@ public final class EconomeBox {
      * What to do next, for the state the switches are in. The setup's comes first: it is the one that
      * cannot be done with the panel up — the panel covers the very bar the player has to click.
      */
+    private static final String[] HINTS = {"econome.hint.off", "econome.hint.setup", "econome.hint.on"};
+
     private static String hintFor(OverlayContent content) {
         if (content.spellSetup()) {
             return "econome.hint.setup";
         }
         return content.econome() ? "econome.hint.on" : "econome.hint.off";
+    }
+
+    /**
+     * The hint's steps, numbered, each wrapped under its own text rather than under its number — so the
+     * numbers stand in a column of their own and the steps read down it.
+     */
+    private static JComponent steps(Scale scale, Words words, String key, int width) {
+        // A | between two steps; a \n inside one is a line of its own within the step.
+        final var steps = words.get(key).split("\\|");
+        // Held to their own height and between two glues: the column is as tall as the controls beside it,
+        // and the steps sit together in its middle rather than spread down it.
+        final var list = Card.plainColumn();
+        list.add(Box.createVerticalGlue());
+        final var indent = new Hint(scale, steps.length + ".").getPreferredSize().width + scale.px(Metrics.GAP / 2);
+        for (var i = 0; i < steps.length; i++) {
+            if (i > 0) {
+                list.add(Box.createVerticalStrut(scale.px(Metrics.GAP / 2)));
+            }
+            final var number = new Hint(scale, (i + 1) + ".");
+            number.setVerticalAlignment(SwingConstants.TOP);
+            number.setPreferredSize(new Dimension(indent, number.getPreferredSize().height));
+
+            final var text = Card.plainColumn();
+            Hint.wrapped(scale, steps[i], width - indent).forEach(text::add);
+
+            final var step = new JPanel(new BorderLayout());
+            step.setOpaque(false);
+            step.setAlignmentX(Component.LEFT_ALIGNMENT);
+            step.add(number, BorderLayout.WEST);
+            step.add(text, BorderLayout.CENTER);
+            step.setMaximumSize(new Dimension(Integer.MAX_VALUE, step.getPreferredSize().height));
+            list.add(step);
+        }
+        list.add(Box.createVerticalGlue());
+        return list;
     }
 
     private static JPanel row(Scale scale, JComponent... controls) {
@@ -117,6 +168,7 @@ public final class EconomeBox {
         for (final var control : controls) {
             row.add(control);
         }
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
         return row;
     }
 }

@@ -48,7 +48,7 @@ public final class ActivityList {
     private static final int DETAIL_WIDTH = 92;
 
     /** How many lines the card shows. Beyond this the older ones are simply out of sight. */
-    private static final int VISIBLE = 8;
+    private static final int VISIBLE = 5;
 
     /** Wall-clock, to the second: the acts come seconds apart, so minutes alone would not tell them apart. */
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");

@@ -19,6 +19,7 @@ import fr.minobot.i18n.Text;
 import fr.minobot.i18n.Words;
 import fr.minobot.ui.MarksActions;
 import fr.minobot.ui.MarksContent;
+import fr.minobot.ui.MarksContent.Guide;
 import fr.minobot.ui.MarksContent.Kind;
 import fr.minobot.ui.MarksContent.Mark;
 import fr.minobot.ui.MarksView;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -69,11 +71,20 @@ public final class SpellMarks implements MarksActions {
     /** {@code VK_LBUTTON}. */
     private static final int LEFT_BUTTON = 0x01;
 
-    static final String SETUP_HINT = "marks.setup_hint";
-    static final String NO_BAR_HINT = "marks.no_bar_hint";
+    static final String SETUP_TITLE = "marks.setup_title";
+    static final String SETUP_SUBTITLE = "marks.setup_subtitle";
+    static final String SETUP_PROGRESS = "marks.setup_progress";
+    static final String STEP_CLICK = "marks.step_click";
+    static final String STEP_CAST = "marks.step_cast";
+    static final String STEP_GREEN = "marks.step_green";
+    static final String STEP_DONE = "marks.step_done";
+    static final String STEP_NO_BAR = "marks.step_no_bar";
+    static final String WAITING = "marks.waiting";
     static final String UNPLACED_HINT = "marks.unplaced_hint";
     static final String OWN_LAYOUT = "marks.own_layout";
     static final String CLASS_LAYOUT = "marks.class_layout";
+    static final String OWN_LAYOUT_NOTE = "marks.own_layout_note";
+    static final String CLASS_LAYOUT_NOTE = "marks.class_layout_note";
     static final String WEAPON_LABEL = "marks.weapon";
     static final String UNKNOWN_LABEL = "?";
 
@@ -253,12 +264,10 @@ public final class SpellMarks implements MarksActions {
 
         final var marks = new ArrayList<Mark>();
         var hint = "";
-        var action = "";
+        var guide = Optional.<Guide>empty();
         inSetup = config.spellSetup() ? name : null;
         if (config.spellSetup()) {
-            if (classOf(name) != null) {
-                action = words.get(layouts.hasOwn(name) ? CLASS_LAYOUT : OWN_LAYOUT);
-            }
+            var learned = 0;
             if (barUp) {
                 final var hovered = cursorIn(game);
                 for (var slot = 0; slot < SpellBar.slots(hud); slot++) {
@@ -266,11 +275,10 @@ public final class SpellMarks implements MarksActions {
                     final var label = hovered.isPresent() && hovered.getAsInt() == slot ? spell.orElse(UNKNOWN_LABEL) : "";
                     marks.add(new Mark(SpellBar.slot(hud, slot, width, height),
                             spell.isPresent() ? Kind.KNOWN : Kind.UNKNOWN, label));
+                    learned += slot != SpellBar.WEAPON && spell.isPresent() ? 1 : 0;
                 }
-                hint = words.get(SETUP_HINT, name, layout);
-            } else {
-                hint = words.get(NO_BAR_HINT);
             }
+            guide = Optional.of(guide(words, name, layout, barUp, learned));
         }
         if (config.econome() && turns.inFight()) {
             final var unplaced = new ArrayList<String>();
@@ -282,11 +290,38 @@ public final class SpellMarks implements MarksActions {
                     marks.add(new Mark(SpellBar.slot(hud, slot.getAsInt(), width, height), Kind.USED, ""));
                 }
             }
-            if (hint.isEmpty() && !unplaced.isEmpty()) {
+            if (guide.isEmpty() && !unplaced.isEmpty()) {
                 hint = words.get(UNPLACED_HINT, String.join(", ", unplaced));
             }
         }
-        return new MarksContent(config.overlayScale(), marks, hint, action);
+        return new MarksContent(config.overlayScale(), marks, hint, guide);
+    }
+
+    /**
+     * The setup's card. Its steps say all of it, down to how the setup ends — the panel that switched it on
+     * is closed by then. While a slot clicked waits for its cast, the card counts the seconds left.
+     */
+    private Guide guide(Words words, String name, String layout, boolean barUp, int learned) {
+        final var steps = barUp
+                ? List.of(words.get(STEP_CLICK), words.get(STEP_CAST, LESSON.toSeconds()), words.get(STEP_GREEN),
+                        words.get(STEP_DONE))
+                : List.of(words.get(STEP_NO_BAR), words.get(STEP_DONE));
+
+        var status = "";
+        final var waiting = lesson;
+        if (waiting != null && waiting.character().equals(name)) {
+            final var left = LESSON.toNanos() - (nanos.getAsLong() - waiting.at());
+            if (left > 0) {
+                status = words.get(WAITING, Math.ceilDiv(left, 1_000_000_000L));
+            }
+        }
+
+        final var hasClass = classOf(name) != null;
+        final var own = layouts.hasOwn(name);
+        return new Guide(words.get(SETUP_TITLE), words.get(SETUP_SUBTITLE, name, layout),
+                barUp ? words.get(SETUP_PROGRESS, learned) : "", steps, status,
+                hasClass ? words.get(own ? CLASS_LAYOUT_NOTE : OWN_LAYOUT_NOTE) : "",
+                hasClass ? words.get(own ? CLASS_LAYOUT : OWN_LAYOUT) : "");
     }
 
     private String layoutOf(String character) {

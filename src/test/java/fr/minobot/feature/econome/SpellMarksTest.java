@@ -174,7 +174,35 @@ class SpellMarksTest {
         assertThat(drawn(Kind.KNOWN)).extracting(Mark::slot).containsExactly(slot(SpellBar.WEAPON), slot(3));
         assertThat(content.marks()).filteredOn(mark -> !mark.label().isEmpty())
                 .singleElement().satisfies(mark -> assertThat(mark.label()).isEqualTo("Flèche d'Expiation"));
-        assertThat(content.hint()).isEqualTo(FRENCH.get(SpellMarks.SETUP_HINT, "Foxtrot", "Foxtrot"));
+        final var guide = content.guide().orElseThrow();
+        assertThat(guide.subtitle()).isEqualTo(FRENCH.get(SpellMarks.SETUP_SUBTITLE, "Foxtrot", "Foxtrot"));
+        assertThat(guide.progress()).as("the weapon is not counted").isEqualTo(FRENCH.get(SpellMarks.SETUP_PROGRESS, 1));
+        assertThat(guide.steps()).first().isEqualTo(FRENCH.get(SpellMarks.STEP_CLICK));
+        assertThat(guide.steps()).last().isEqualTo(FRENCH.get(SpellMarks.STEP_DONE));
+    }
+
+    @Test
+    @DisplayName("with no bar on screen, the setup's card asks for it and counts nothing")
+    void asksForTheBar() {
+        start(Map.of("spell_setup", true));
+
+        marks.tick();
+
+        final var guide = view.content().orElseThrow().guide().orElseThrow();
+        assertThat(guide.steps()).containsExactly(FRENCH.get(SpellMarks.STEP_NO_BAR), FRENCH.get(SpellMarks.STEP_DONE));
+        assertThat(guide.progress()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a slot clicked in the setup is waited on, and the card counts down its seconds")
+    void countsDownTheLesson() {
+        start(Map.of("spell_setup", true));
+        barUp();
+
+        click(5);
+
+        assertThat(view.content().orElseThrow().guide().orElseThrow().status())
+                .isEqualTo(FRENCH.get(SpellMarks.WAITING, SpellMarks.LESSON.toSeconds()));
     }
 
     @Test
@@ -274,7 +302,7 @@ class SpellMarksTest {
         barUp();
 
         marks.tick();
-        assertThat(view.content().orElseThrow().action()).isEqualTo(FRENCH.get(SpellMarks.OWN_LAYOUT));
+        assertThat(view.content().orElseThrow().guide().orElseThrow().action()).isEqualTo(FRENCH.get(SpellMarks.OWN_LAYOUT));
 
         marks.act();
         for (var tries = 0; tries < 200 && !layouts.hasOwn("Foxtrot"); tries++) {
@@ -282,8 +310,9 @@ class SpellMarksTest {
         }
         awaitWritten();
         marks.tick();
-        assertThat(view.content().orElseThrow().action()).isEqualTo(FRENCH.get(SpellMarks.CLASS_LAYOUT));
-        assertThat(view.content().orElseThrow().hint()).isEqualTo(FRENCH.get(SpellMarks.SETUP_HINT, "Foxtrot", "Foxtrot"));
+        assertThat(view.content().orElseThrow().guide().orElseThrow().action()).isEqualTo(FRENCH.get(SpellMarks.CLASS_LAYOUT));
+        assertThat(view.content().orElseThrow().guide().orElseThrow().subtitle())
+                .isEqualTo(FRENCH.get(SpellMarks.SETUP_SUBTITLE, "Foxtrot", "Foxtrot"));
     }
 
     @Test
@@ -294,7 +323,7 @@ class SpellMarksTest {
 
         marks.tick();
 
-        assertThat(view.content().orElseThrow().action()).isEmpty();
+        assertThat(view.content().orElseThrow().guide().orElseThrow().action()).isEmpty();
     }
 
     private void awaitWritten() throws InterruptedException {
