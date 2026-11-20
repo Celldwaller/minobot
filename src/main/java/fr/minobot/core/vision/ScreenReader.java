@@ -7,6 +7,7 @@ import fr.minobot.core.domain.GameWindow;
 import fr.minobot.win32.Frame;
 
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 /** One thing read off a character's window at each look of the {@link ScreenWatcher}, and told on. */
 @FunctionalInterface
@@ -42,6 +43,18 @@ public interface ScreenReader {
         return (_, frame, _) -> {
             if (fighting.getAsBoolean()) {
                 chat.lines(frame).ifPresent(fightLog::report);
+            }
+        };
+    }
+
+    /**
+     * The end-of-fight screen up in a character's window — looked for only while it is wanted: out of a
+     * fight's end, it is two columns of every window copied out at every look for nothing.
+     */
+    static ScreenReader resultsScreen(BooleanSupplier wanted, Consumer<GameWindow> seen) {
+        return (window, frame, _) -> {
+            if (wanted.getAsBoolean() && ResultsScreen.isUp(frame)) {
+                seen.accept(window);
             }
         };
     }

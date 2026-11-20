@@ -132,13 +132,18 @@ public final class MinobotApp {
         final var spellUsage = new SpellUsage(fightLog);
         final var spellBars = new SpellBars();
 
+        // Closes the end-of-fight screen in every window but the one the player reads it in, as the screen
+        // watcher sees it open after the fight log's end.
+        final var resultsCloser = new ResultsCloser(api, windowManager, fightLog, activityLog);
+
         this.ocr = WindowsOcr.start();
         if (ocr.isEmpty()) {
             log.warn("No Windows OCR language for this user: turns, requests and casts will not be heard.");
         }
         this.screenWatcher = ocr.map(reader -> new ScreenWatcher(api, windowManager,
                 List.of(ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns)),
-                List.of(ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests)),
+                List.of(ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests),
+                        ScreenReader.resultsScreen(resultsCloser::sweeping, resultsCloser::seen)),
                 List.of(new ScreenWatcher.Pinned(characters -> characters.stream().findFirst(),
                                 ScreenReader.fightLog(new ChatLog(reader), fightLog, fightTurns::inFight)),
                         new ScreenWatcher.Pinned(characters -> characters.stream()
@@ -189,9 +194,6 @@ public final class MinobotApp {
         // Ends each character's turn while the Auto-pass switch is on, reading it at every turn. The
         // switch is flipped by the overlay or by the AUTO_PASS_TURN hotkey (bound below like any other).
         new TurnPasser(windowManager, inputSimulator, focusManager, fightTurns, settings, activityLog);
-
-        // Closes the end-of-fight screen in every window but the one the player reads it in.
-        new ResultsCloser(api, windowManager, fightLog, activityLog);
 
         // The visible half of the same switch: a standing banner over the game while auto-pass is on. It
         // answers no toast — it watches the switch through Settings.onChange and follows the game window.

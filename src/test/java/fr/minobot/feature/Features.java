@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 
 import fr.minobot.core.domain.GameWindow;
 
@@ -139,8 +140,9 @@ public final class Features {
         return new TurnPasser(windows, input, focus, turns, settings, activity);
     }
 
-    public ResultsCloser resultsCloser() {
-        return new ResultsCloser(api, windows, new FightLog(), activity);
+    /** Pressing on the caller's thread, so a test reads what was pressed as soon as it is told. */
+    public ResultsCloser resultsCloser(FightLog fightLog, LongSupplier nanos) {
+        return new ResultsCloser(api, windows, fightLog, activity, Runnable::run, nanos);
     }
 
     public TurnFocuser turnFocuser() {
