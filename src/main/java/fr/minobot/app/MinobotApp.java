@@ -3,6 +3,8 @@ package fr.minobot.app;
 import fr.minobot.core.*;
 import fr.minobot.core.KeyboardMonitor.Binding;
 import fr.minobot.core.input.InputSimulator;
+import fr.minobot.core.update.GithubReleases;
+import fr.minobot.core.update.UpdateCheck;
 import fr.minobot.core.vision.ChatLog;
 import fr.minobot.core.vision.RememberingTextReader;
 import fr.minobot.core.vision.RequestDialog;
@@ -148,8 +150,15 @@ public final class MinobotApp {
         this.groupManager = new GroupManager(
                 windowManager, inputSimulator, focusManager, requests, activityLog);
         final var spellLayouts = new SpellLayouts(dataDirectory.resolve("spell-layouts.json"));
+
+        // Whether a newer release is out, for the panel's footer to say so. The version is the jar's own,
+        // stamped by Maven; a build run from the IDE has none and never asks.
+        final var updates = new UpdateCheck(MinobotApp.class.getPackage().getImplementationVersion(),
+                new GithubReleases());
+        updates.start();
+
         this.overlay = new OverlayController(api, windowManager, settings, keyboardMonitor, focusManager,
-                activityLog, whisperLog, spellUsage, spellLayouts, SwingOverlay::new);
+                activityLog, whisperLog, spellUsage, spellLayouts, updates, SwingOverlay::new);
 
         // Crosses out the spells each character cast this fight, for the Économe challenge, and learns
         // which slot holds which spell while the player sets the bar up. Both are switches on the panel.

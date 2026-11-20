@@ -13,6 +13,7 @@ import fr.minobot.core.domain.Character;
 import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.GameWindow;
 import fr.minobot.core.domain.Sex;
+import fr.minobot.core.update.UpdateCheck;
 import fr.minobot.i18n.Language;
 import fr.minobot.i18n.Text;
 import fr.minobot.ui.CharacterEntry;
@@ -100,6 +101,7 @@ public final class OverlayController implements OverlayActions {
     private final WhisperLog whispers;
     private final SpellUsage spells;
     private final SpellLayouts layouts;
+    private final UpdateCheck updates;
     private final OverlayView view;
 
     /** The character the panel is up on — whose layout the setup's reset forgets. */
@@ -120,7 +122,7 @@ public final class OverlayController implements OverlayActions {
     public OverlayController(WindowApi api, WindowManager windows, Settings settings,
                              KeyboardMonitor keyboard, FocusManager focus,
                              ActivityLog activity, WhisperLog whispers, SpellUsage spells,
-                             SpellLayouts layouts, Function<OverlayActions, OverlayView> viewFactory) {
+                             SpellLayouts layouts, UpdateCheck updates, Function<OverlayActions, OverlayView> viewFactory) {
         this.api = api;
         this.windows = windows;
         this.settings = settings;
@@ -130,6 +132,7 @@ public final class OverlayController implements OverlayActions {
         this.whispers = whispers;
         this.spells = spells;
         this.layouts = layouts;
+        this.updates = updates;
         this.view = viewFactory.apply(this);
     }
 
@@ -483,7 +486,8 @@ public final class OverlayController implements OverlayActions {
         return new OverlayContent(entries, hotkeys, config.overlayScale(),
                 config.autoPassTurn(), config.autoAcceptTrade(),
                 config.econome(), config.spellSetup(),
-                activity.recent(), whispers.recent(), config.language());
+                activity.recent(), whispers.recent(), config.language(),
+                updates.running(), updates.available());
     }
 
     /** Shows the change the player just made, without moving the panel off its character. */

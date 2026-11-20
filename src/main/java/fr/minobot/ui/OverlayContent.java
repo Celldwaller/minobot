@@ -8,6 +8,7 @@ import fr.minobot.i18n.Words;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * What the panel shows: the characters Minobot has found, in the order the player cycles through them,
@@ -34,6 +35,9 @@ import java.util.Map;
  * <p>{@code language} is the one the player reads the panel in — what the header's selector shows as
  * chosen, and what every word on the panel is looked up in, through {@link #words()}.
  *
+ * <p>{@code version} is the one running, when the build knows it; {@code update} is the tag of a release newer than the one running, when one has been published — what
+ * the footer offers beside the project's link.
+ *
  * <p>{@code activity} and {@code whispers} both arrive <strong>newest first</strong>, which is the order
  * the panel reads them in: the player opens it to see what just happened, so the last thing to have
  * happened is the first thing drawn. They are the record of everything the features did off-screen —
@@ -48,7 +52,8 @@ import java.util.Map;
 public record OverlayContent(List<CharacterEntry> characters, Map<Feature, String> hotkeys, double scale,
                              boolean autoPassTurn, boolean autoAcceptTrade,
                              boolean econome, boolean spellSetup,
-                             List<Activity> activity, List<Whisper> whispers, Language language) {
+                             List<Activity> activity, List<Whisper> whispers, Language language,
+                             Optional<String> version, Optional<String> update) {
 
     /**
      * What the panel lists a game window with no character loaded yet under — a login or selection

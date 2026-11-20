@@ -26,7 +26,7 @@
           java.sql pulls java.xml and java.logging in transitively; jdk.unsupported is there because
           sqlite-jdbc reaches for sun.misc.Unsafe, which no static analysis reports.
         -->
-        <dist.modules>java.base,java.desktop,java.naming,java.sql,java.xml,jdk.unsupported</dist.modules>
+        <dist.modules>java.base,java.desktop,java.naming,java.net.http,java.sql,java.xml,jdk.unsupported</dist.modules>
 
         <!-- jpackage only accepts a numeric version, so it cannot reuse the SNAPSHOT one. -->
         <dist.version>1.9.1</dist.version>
@@ -168,6 +168,8 @@
                             <mainClass>${main.class}</mainClass>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
+                            <!-- Implementation-Version: the version the update check compares releases to. -->
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
                         <manifestEntries>
                             <!-- JEP 472: grants native access to the executable jar without a CLI flag. -->

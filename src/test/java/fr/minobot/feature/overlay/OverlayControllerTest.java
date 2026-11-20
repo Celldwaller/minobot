@@ -17,6 +17,7 @@ import fr.minobot.core.domain.Character;
 import fr.minobot.core.domain.DofusClass;
 import fr.minobot.core.domain.Sex;
 import fr.minobot.core.domain.Whisper;
+import fr.minobot.core.update.UpdateCheck;
 import fr.minobot.core.input.FakeInput;
 import fr.minobot.i18n.Language;
 import fr.minobot.i18n.Text;
@@ -58,6 +59,8 @@ class OverlayControllerTest {
 
     private SpellLayouts layouts;
 
+    private final UpdateCheck updates = new UpdateCheck(null, Optional::empty);
+
     private OverlayController controller() {
         return controller(new WindowManager(api, settings, activity));
     }
@@ -68,7 +71,7 @@ class OverlayControllerTest {
         }
         return new OverlayController(api, windows, settings, new KeyboardMonitor(api),
                 new FocusManager(api, new FakeInput(api::foregroundWindow)),
-                activity, whispers, spells, layouts, _ -> view);
+                activity, whispers, spells, layouts, updates, _ -> view);
     }
 
     /** The names the panel was last handed to draw, in the order it drew them. */

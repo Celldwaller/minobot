@@ -15,7 +15,7 @@ Requires a **JDK 25** (`JAVA_HOME=C:\path\to\jdk-25 ./mvnw verify` if needed).
 ## Rules
 
 - **The outside world goes through a few interfaces only:** `win32.WindowApi`, `win32.TextReader`,
-  `core.Input`, and the `ui` views (`OverlayView`, `ToastView`, `BannerView`). Never call `user32.dll`,
+  `core.Input`, `core.update.ReleaseFeed` (the network), and the `ui` views (`OverlayView`, `ToastView`, `BannerView`). Never call `user32.dll`,
   `combase.dll`, `java.awt.Robot` or Swing from anywhere but their implementations — everything else must
   stay testable with `FakeWindowApi` / `FakeInput`, on any OS, with no game running.
 - **A feature speaks of characters (`GameWindow`), not of handles.** Windows details (`PostMessage`,

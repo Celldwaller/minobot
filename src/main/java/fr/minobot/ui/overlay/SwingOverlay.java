@@ -282,7 +282,10 @@ public final class SwingOverlay implements OverlayView {
         return card;
     }
 
-    /** The project's link in the corner, as a site's footer has it, and the size across from it. */
+    /**
+     * The project's link in the corner, as a site's footer has it — with the version running, and a newer
+     * release when one is out — and the size across from it.
+     */
     private JComponent footer(OverlayContent content) {
         final var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
@@ -290,7 +293,7 @@ public final class SwingOverlay implements OverlayView {
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, px(Metrics.ROW)));
 
-        row.add(githubLink.build(scale));
+        row.add(githubLink.build(scale, content.words(), content.version(), content.update()));
         row.add(Box.createHorizontalGlue());
         row.add(sizeSlider.build(scale, content.words()));
         return row;
