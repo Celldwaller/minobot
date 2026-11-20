@@ -74,17 +74,22 @@ public interface OverlayActions {
      */
     void toggleAutoAcceptTrade(boolean on);
 
-    /** Switches the crosses on the spells cast this fight on or off — the <em>Économe</em> help. */
+    /**
+     * Starts or stops the <em>Économe</em> challenge — the crosses on the spells cast this fight. Either
+     * way the casts heard so far are forgotten: a challenge starts with none, and one stopped leaves none
+     * behind for the next. The slots learned are not touched — see {@link #resetSpellSetup()}.
+     */
     void toggleEconome(boolean on);
 
     /** Switches the spell bar's setup on or off: its slots framed, so the player can teach them. */
     void toggleSpellSetup(boolean on);
 
     /**
-     * Forgets the spells cast this fight, and their crosses with them — what a new fight does, for the
-     * one that began too soon after the last to be told apart from it.
+     * Forgets the slots learned for the layout the panel's character uses — their class's, or their own —
+     * so the setup starts over. Kept on disk, unlike everything else the Easyconome box does: offered only
+     * while the setup is on, where it cannot be pressed by mistake in a fight.
      */
-    void resetEconome();
+    void resetSpellSetup();
 
     /**
      * Brings up the character a whisper was sent to, so the player can answer it — the panel's version of

@@ -5,6 +5,7 @@ import fr.minobot.app.Settings;
 import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.KeyboardMonitor;
+import fr.minobot.core.SpellLayouts;
 import fr.minobot.core.SpellUsage;
 import fr.minobot.core.WhisperLog;
 import fr.minobot.core.WindowManager;
@@ -98,7 +99,11 @@ public final class OverlayController implements OverlayActions {
     private final ActivityLog activity;
     private final WhisperLog whispers;
     private final SpellUsage spells;
+    private final SpellLayouts layouts;
     private final OverlayView view;
+
+    /** The character the panel is up on — whose layout the setup's reset forgets. */
+    private final AtomicReference<GameWindow> owner = new AtomicReference<>();
 
     /** Where the panel last was, so an edit can redraw it without asking Windows again. */
     private final AtomicReference<Rect> bounds = new AtomicReference<>();
@@ -115,7 +120,7 @@ public final class OverlayController implements OverlayActions {
     public OverlayController(WindowApi api, WindowManager windows, Settings settings,
                              KeyboardMonitor keyboard, FocusManager focus,
                              ActivityLog activity, WhisperLog whispers, SpellUsage spells,
-                             Function<OverlayActions, OverlayView> viewFactory) {
+                             SpellLayouts layouts, Function<OverlayActions, OverlayView> viewFactory) {
         this.api = api;
         this.windows = windows;
         this.settings = settings;
@@ -124,6 +129,7 @@ public final class OverlayController implements OverlayActions {
         this.activity = activity;
         this.whispers = whispers;
         this.spells = spells;
+        this.layouts = layouts;
         this.view = viewFactory.apply(this);
     }
 
@@ -159,6 +165,7 @@ public final class OverlayController implements OverlayActions {
 
         log.info("Showing the overlay on '{}'.", character.get().name());
         bounds.set(area.get());
+        owner.set(character.get());
         draw(content(), area.get());
 
         follow(character.get());
@@ -339,8 +346,10 @@ public final class OverlayController implements OverlayActions {
 
     @Override
     public void toggleEconome(boolean on) {
-        log.info("Easyconome switched {}.", on ? "on" : "off");
+        log.info("Easyconome challenge {}: the spells cast so far are forgotten.", on ? "started" : "stopped");
+        spells.clear();
         settings.update(config -> config.withEconome(on));
+        activity.record(Text.of(on ? "activity.challenge_started" : "activity.challenge_stopped"));
         redraw();
     }
 
@@ -352,11 +361,26 @@ public final class OverlayController implements OverlayActions {
     }
 
     @Override
-    public void resetEconome() {
-        log.info("Easyconome reset: the spells cast this fight are forgotten.");
-        spells.clear();
-        activity.record(Text.of("activity.econome_reset"), Text.of("activity.nothing_cast"));
+    public void resetSpellSetup() {
+        final var character = owner.get();
+        if (character == null || !character.hasCharacterName()) {
+            return; // a login screen has no layout to forget
+        }
+
+        final var name = character.name();
+        final var layout = layouts.layoutOf(name, classOf(name));
+        log.info("Spell setup reset for '{}': layout '{}' forgotten.", name, layout);
+        layouts.forget(layout);
+        activity.record(Text.of("activity.setup_reset"), Text.of("activity.layout", layout));
         redraw();
+    }
+
+    /** The class the player pinned to the character, {@code null} when they have not. */
+    private DofusClass classOf(String character) {
+        return settings.get().characters().stream()
+                .filter(it -> it.name().equalsIgnoreCase(character))
+                .map(Character::clazz)
+                .findFirst().orElse(null);
     }
 
     /**

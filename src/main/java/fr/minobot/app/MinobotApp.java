@@ -147,13 +147,14 @@ public final class MinobotApp {
         this.windowMaximizer = new WindowMaximizer(api, windowManager, activityLog);
         this.groupManager = new GroupManager(
                 windowManager, inputSimulator, focusManager, requests, activityLog);
+        final var spellLayouts = new SpellLayouts(dataDirectory.resolve("spell-layouts.json"));
         this.overlay = new OverlayController(api, windowManager, settings, keyboardMonitor, focusManager,
-                activityLog, whisperLog, spellUsage, SwingOverlay::new);
+                activityLog, whisperLog, spellUsage, spellLayouts, SwingOverlay::new);
 
         // Crosses out the spells each character cast this fight, for the Économe challenge, and learns
         // which slot holds which spell while the player sets the bar up. Both are switches on the panel.
         new SpellMarks(api, windowManager, settings, fightTurns, fightLog, spellUsage, spellBars,
-                new SpellLayouts(dataDirectory.resolve("spell-layouts.json")), activityLog, overlay::isShowing,
+                spellLayouts, activityLog, overlay::isShowing,
                 SwingMarks::new);
 
         // Answers a trade between two of the player's own characters in place. Built before the

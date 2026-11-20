@@ -94,4 +94,22 @@ class SpellLayoutsTest {
         layouts.toggleOwn("Foxtrot", DofusClass.CRA);
         assertThat(layouts.slotOf("Foxtrot", "Flèche")).as("kept for the next time").hasValue(5);
     }
+
+    @Test
+    @DisplayName("a layout forgotten loses its slots, on disk too, and leaves the others and who uses it alone")
+    void forgetsALayout() {
+        final var layouts = new SpellLayouts(file());
+        layouts.learn("Crâ", 3, "Flèche");
+        layouts.learn("Iop", 2, "Pression");
+        layouts.toggleOwn("Foxtrot", DofusClass.CRA);
+
+        layouts.forget("Foxtrot");
+        layouts.forget("Crâ");
+
+        final var reloaded = new SpellLayouts(file());
+        assertThat(reloaded.spellAt("Crâ", 3)).isEmpty();
+        assertThat(reloaded.spellAt("Foxtrot", 3)).isEmpty();
+        assertThat(reloaded.spellAt("Iop", 2)).contains("Pression");
+        assertThat(reloaded.hasOwn("Foxtrot")).isTrue();
+    }
 }

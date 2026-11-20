@@ -8,6 +8,7 @@ import fr.minobot.core.ActivityLog;
 import fr.minobot.core.FightLog;
 import fr.minobot.core.FocusManager;
 import fr.minobot.core.KeyboardMonitor;
+import fr.minobot.core.SpellLayouts;
 import fr.minobot.core.SpellUsage;
 import fr.minobot.core.WhisperLog;
 import fr.minobot.core.WindowManager;
@@ -26,7 +27,9 @@ import fr.minobot.win32.Rect;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,14 +53,22 @@ class OverlayControllerTest {
     private final FightLog fightLog = new FightLog();
     private final SpellUsage spells = new SpellUsage(fightLog);
 
+    @TempDir
+    Path folder;
+
+    private SpellLayouts layouts;
+
     private OverlayController controller() {
         return controller(new WindowManager(api, settings, activity));
     }
 
     private OverlayController controller(WindowManager windows) {
+        if (layouts == null) {
+            layouts = new SpellLayouts(folder.resolve("spell-layouts.json"));
+        }
         return new OverlayController(api, windows, settings, new KeyboardMonitor(api),
                 new FocusManager(api, new FakeInput(api::foregroundWindow)),
-                activity, whispers, spells, _ -> view);
+                activity, whispers, spells, layouts, _ -> view);
     }
 
     /** The names the panel was last handed to draw, in the order it drew them. */
@@ -754,21 +765,44 @@ class OverlayControllerTest {
         }
 
         @Test
-        @DisplayName("resetting the Easyconome forgets what was cast, and says so")
-        void resetsTheEconome() {
+        @DisplayName("stopping the challenge forgets what was cast but not the slots learned, and says so")
+        void stopsTheChallenge() {
             api.withForeground(1);
+            settings.update(config -> config.withEconome(true));
             fightLog.report(List.of("before"));
             fightLog.report(List.of("Alpha lance Flèche."));
             final var controller = controller();
+            layouts.learn("Crâ", 3, "Flèche");
             controller.toggle();
             assertThat(spells.of("Alpha")).isNotEmpty();
 
-            controller.resetEconome();
+            controller.toggleEconome(false);
 
+            assertThat(settings.get().econome()).isFalse();
             assertThat(spells.of("Alpha")).isEmpty();
+            assertThat(layouts.spellAt("Crâ", 3)).contains("Flèche");
             assertThat(view.content().orElseThrow().activity())
                     .extracting(Activity::what)
-                    .first().isEqualTo(Text.of("activity.econome_reset"));
+                    .first().isEqualTo(Text.of("activity.challenge_stopped"));
+        }
+
+        @Test
+        @DisplayName("resetting the setup forgets the layout of the panel's character only, and says so")
+        void resetsTheSpellSetup() {
+            settings.update(config -> config.withCharacterClass("Alpha", DofusClass.CRA));
+            api.withForeground(1);
+            final var controller = controller();
+            layouts.learn("Crâ", 3, "Flèche");
+            layouts.learn("Iop", 2, "Pression");
+            controller.toggle();
+
+            controller.resetSpellSetup();
+
+            assertThat(layouts.spellAt("Crâ", 3)).isEmpty();
+            assertThat(layouts.spellAt("Iop", 2)).contains("Pression");
+            assertThat(view.content().orElseThrow().activity())
+                    .first().extracting(Activity::what, Activity::detail)
+                    .containsExactly(Text.of("activity.setup_reset"), Text.of("activity.layout", "Crâ"));
         }
 
         @Test

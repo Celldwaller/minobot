@@ -112,6 +112,27 @@ public final class SpellLayouts {
         }
     }
 
+    /**
+     * Forgets every slot of a layout, so the setup starts over. Who uses it is kept: a character given
+     * their own layout keeps it, empty, rather than falling back on their class's.
+     */
+    public void forget(String layout) {
+        synchronized (writeLock) {
+            final Layouts saved;
+            synchronized (this) {
+                if (!writable || !layouts.layouts().containsKey(layout)) {
+                    return;
+                }
+                final var all = new TreeMap<String, Map<Integer, String>>(layouts.layouts());
+                all.remove(layout);
+                layouts = new Layouts(all, layouts.characters()).copy();
+                saved = layouts;
+            }
+            log.info("Layout '{}' forgotten.", layout);
+            save(saved);
+        }
+    }
+
     /** Whether the character uses a layout of their own rather than the one of their class. */
     public synchronized boolean hasOwn(String character) {
         return layouts.characters().containsKey(character);
