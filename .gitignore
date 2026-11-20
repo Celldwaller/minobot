@@ -10,13 +10,5 @@
 # Build
 target/
 
-# Runtime
-logs/
-
-# Local configuration, generated next to the executable on first launch
-config.json
-overlay.json
-spell-layouts.json
-
 # CaptureProbe output
 captures/

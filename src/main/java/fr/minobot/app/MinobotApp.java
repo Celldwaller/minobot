@@ -92,21 +92,22 @@ public final class MinobotApp {
     }
 
     public MinobotApp(WindowApi api) {
-        final var baseDirectory = ConfigLoader.baseDirectory();
-        final var configPath = baseDirectory.resolve("config.json");
-        final var overlayPath = baseDirectory.resolve("overlay.json");
+        final var dataDirectory = ConfigLoader.dataDirectory();
+        ConfigLoader.adoptLegacyFiles(dataDirectory, "config.json", "overlay.json", "spell-layouts.json");
+        final var configPath = dataDirectory.resolve("config.json");
+        final var overlayPath = dataDirectory.resolve("overlay.json");
 
         this.settings = new Settings(ConfigLoader.load(configPath, overlayPath));
-        LoggerSetup.configure(settings.get(), baseDirectory);
+        LoggerSetup.configure(settings.get(), dataDirectory);
 
-        log.info("=== Minobot starting (app dir: {}) ===", baseDirectory);
+        log.info("=== Minobot starting (data dir: {}) ===", dataDirectory);
         log.info("Using config: {}", configPath);
 
         this.activityLog = new ActivityLog();
         this.whisperLog = new WhisperLog();
 
         this.windowManager = new WindowManager(api, settings, activityLog);
-        this.systemTray = new SystemTrayManager(this::trayMenuContent, baseDirectory, this::stop,
+        this.systemTray = new SystemTrayManager(this::trayMenuContent, dataDirectory, this::stop,
                 SwingTrayMenu::new);
         this.inputSimulator = new InputSimulator();
         this.keyboardMonitor = new KeyboardMonitor(api);
@@ -152,7 +153,7 @@ public final class MinobotApp {
         // Crosses out the spells each character cast this fight, for the Économe challenge, and learns
         // which slot holds which spell while the player sets the bar up. Both are switches on the panel.
         new SpellMarks(api, windowManager, settings, fightTurns, fightLog, spellUsage, spellBars,
-                new SpellLayouts(baseDirectory.resolve("spell-layouts.json")), activityLog, overlay::isShowing,
+                new SpellLayouts(dataDirectory.resolve("spell-layouts.json")), activityLog, overlay::isShowing,
                 SwingMarks::new);
 
         // Answers a trade between two of the player's own characters in place. Built before the

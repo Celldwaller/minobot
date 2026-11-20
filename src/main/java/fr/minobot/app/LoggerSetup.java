@@ -31,13 +31,13 @@ public final class LoggerSetup {
     private LoggerSetup() {
     }
 
-    public static void configure(Config config, Path baseDirectory) {
+    public static void configure(Config config, Path dataDirectory) {
         final var context = (LoggerContext) LoggerFactory.getILoggerFactory();
         final var root = context.getLogger(Logger.ROOT_LOGGER_NAME);
 
         root.setLevel(Level.toLevel(config.logLevel(), Level.INFO));
 
-        final var logFile = baseDirectory.resolve(LOG_FILE);
+        final var logFile = dataDirectory.resolve(LOG_FILE);
         root.detachAppender(FILE_APPENDER_NAME);
         root.addAppender(fileAppender(context, logFile));
         root.info("Logging to file: {}", logFile);

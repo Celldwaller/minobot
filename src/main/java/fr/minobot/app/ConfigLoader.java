@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * Loads {@code config.json}, falling back to {@link Config#defaults()} and writing that file out on
@@ -23,15 +24,46 @@ public final class ConfigLoader {
     }
 
     /**
-     * The directory the config lives in: next to the executable when packaged, the project root
-     * otherwise. Transposes the {@code sys.frozen} branch of {@code app.py}.
+     * Where the config, the overlay state, the spell layouts and the logs live: {@code %APPDATA%\Minobot},
+     * so that they outlive the portable folder being replaced by a new version.
      */
-    public static Path baseDirectory() {
+    public static Path dataDirectory() {
+        final var appData = System.getenv("APPDATA");
+        final var root = appData != null ? Path.of(appData) : Path.of(System.getProperty("user.home"));
+        return root.resolve("Minobot");
+    }
+
+    /**
+     * Moves into {@code dataDirectory} the files a version older than it wrote next to the executable, so
+     * that an update keeps the player's settings. A file already in {@code dataDirectory} wins.
+     */
+    public static void adoptLegacyFiles(Path dataDirectory, String... names) {
+        final var installDirectory = installDirectory();
+        if (installDirectory.isEmpty() || installDirectory.get().equals(dataDirectory)) {
+            return;
+        }
+        for (final var name : names) {
+            final var legacy = installDirectory.get().resolve(name);
+            final var target = dataDirectory.resolve(name);
+            if (!Files.isRegularFile(legacy) || Files.exists(target)) {
+                continue;
+            }
+            try {
+                Files.createDirectories(dataDirectory);
+                Files.move(legacy, target);
+                log.info("Moved {} to {}", legacy, target);
+            } catch (IOException e) {
+                log.warn("Could not move {} to {}: {}", legacy, target, e.getMessage());
+            }
+        }
+    }
+
+    /** The folder of {@code Minobot.exe} when packaged; empty under a bare {@code java}. */
+    private static Optional<Path> installDirectory() {
         return ProcessHandle.current().info().command()
                 .map(Path::of)
                 .filter(command -> !command.getFileName().toString().startsWith("java"))
-                .map(Path::getParent)
-                .orElseGet(() -> Path.of("").toAbsolutePath());
+                .map(Path::getParent);
     }
 
     /** The defaults merged with {@code config.json} alone — no persisted overlay state. */

@@ -148,5 +148,5 @@ pendant le réglage, lui donne une disposition à lui (il faut lui avoir choisi 
 
 ## En cas de problème
 
-Le journal est dans **`logs/minobot.log`**, à côté de `Minobot.exe` : joignez-le si vous signalez un
-souci. Une touche qui ne répond plus se réattribue dans le tiroir Keybinds.
+Réglages et journal sont dans **`%APPDATA%\Minobot`** (le menu de l'icône ouvre ce dossier). Le journal,
+**`logs\minobot.log`**, est à joindre si vous signalez un souci. Une touche qui ne répond plus se réattribue dans le tiroir Keybinds.
