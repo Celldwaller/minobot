@@ -1,12 +1,15 @@
 ---
 name: release-notes
-description: Write the GitHub release description for a Minobot tag. Use when the user asks to prepare a release, a tag or its notes ("prépare la release 1.9.0", "le descriptif du tag").
+description: Prepare a Minobot release — the version in the pom, the tag created and pushed to the remote (which publishes it), and the GitHub release description, written and set on the release once its workflow is done. Use when the user asks to prepare a release, a tag or its notes ("prépare la release 1.9.0", "le descriptif du tag").
 ---
 
 # Release notes
 
-The user pastes the output straight into GitHub: hand back **one fenced `markdown` block** and nothing to
-adapt.
+The notes are set on the GitHub release with `gh` (see *Publish the notes*), and shown in the conversation
+as **one fenced `markdown` block**, ready as they are.
+
+`gh` is installed and logged in (account `Celldwaller`, `repo` scope). A shell opened before it was
+installed may not have it on its `PATH`: call it as `"/c/Program Files/GitHub CLI/gh.exe"` then.
 
 ## Gather
 
@@ -16,10 +19,34 @@ adapt.
 3. The version in `pom.xml`, in two places: the project's `<version>` and `<dist.version>` (the one
    jpackage stamps on `Minobot.exe`, numeric only). Both must be the tag, `1.9.1` — no `-SNAPSHOT`. If
    either differs, set both, run `./mvnw verify`, and commit `chore: set the version to <tag>` before the
-   tag is created; say so above the notes, and that the commit must be pushed before tagging.
-4. The style of the last releases. `gh` is not installed; the repository is public:
-   `Invoke-RestMethod "https://api.github.com/repos/Celldwaller/minobot/releases?per_page=4"` and read each
-   `body`.
+   tag is created (see *Tag and push*).
+4. The style of the last releases: `gh release list --limit 4`, then `gh release view <tag>` for each.
+
+## Tag and push
+
+The release only exists once the tag is **on the remote**: pushing a `x.y.z` tag is what triggers
+`.github/workflows/release.yml`, which builds `Minobot-<tag>.zip` and creates the GitHub release, with
+generated notes that *Publish the notes* replaces. A tag left local publishes nothing.
+
+1. `main` is pushed, the version commit of step 3 included: `git status -sb` shows nothing ahead of
+   `origin/main`. Otherwise push it first: the tag must name a commit the remote has.
+2. Create the tag on that commit, lightweight like the previous ones (`git tag <tag>`), unless it exists
+   already.
+3. Push the tag alone: `git push origin <tag>` — never `--tags`, which would push every local tag.
+4. Ask the user before steps 1 and 3: a pushed tag publishes a release to players.
+
+## Publish the notes
+
+The release is the workflow's to create: its notes can only be set once it has finished, a few minutes
+after the tag is pushed. Wait for it rather than handing the notes back to paste.
+
+1. Find the run the tag started: `gh run list --workflow release.yml --limit 1 --json databaseId,headBranch,status`
+   — `headBranch` is the tag. It shows up a few seconds after the push: list again until it does.
+2. Wait for it: `gh run watch <databaseId> --exit-status`, in the background, and say meanwhile that it is
+   building. A failed run published nothing: show its log (`gh run view <databaseId> --log-failed`) and stop.
+3. Write the notes (see *Write*) to a file in the scratchpad, then
+   `gh release edit <tag> --notes-file <file>`. Check with `gh release view <tag>`, and give the release's
+   link: `https://github.com/Celldwaller/minobot/releases/tag/<tag>`.
 
 ## Write
 
