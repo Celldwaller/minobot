@@ -13,7 +13,11 @@ adapt.
 1. The tag and the one before it: `git fetch --tags -q; git tag --sort=-v:refname`. If the tag the user
    names does not exist yet, use `HEAD` as the end of the range and say so.
 2. The changes: `git log --oneline <previous>..<tag>`, then read the diffs that the subjects leave unclear.
-3. The style of the last releases. `gh` is not installed; the repository is public:
+3. The version in `pom.xml`, in two places: the project's `<version>` and `<dist.version>` (the one
+   jpackage stamps on `Minobot.exe`, numeric only). Both must be the tag, `1.9.1` — no `-SNAPSHOT`. If
+   either differs, set both, run `./mvnw verify`, and commit `chore: set the version to <tag>` before the
+   tag is created; say so above the notes, and that the commit must be pushed before tagging.
+4. The style of the last releases. `gh` is not installed; the repository is public:
    `Invoke-RestMethod "https://api.github.com/repos/Celldwaller/minobot/releases?per_page=4"` and read each
    `body`.
 
