@@ -2,6 +2,7 @@ package fr.minobot.ui.overlay;
 
 import fr.minobot.app.Config;
 import fr.minobot.core.domain.DofusClass;
+import fr.minobot.i18n.Language;
 import fr.minobot.i18n.Words;
 import fr.minobot.ui.OverlayActions;
 import fr.minobot.ui.OverlayContent;
@@ -39,7 +40,7 @@ import java.awt.GraphicsEnvironment;
 /**
  * The panel, in Swing — the orchestrator that owns the window and lays the sections out on it. The
  * drawing of each part lives in its own class ({@link HeaderBar}, {@link TeamCard}, {@link ConsoleCard},
- * {@link KeybindsDrawer}, {@link ClassPicker}, {@link SizeSlider}, {@link GithubLink}); this wires them onto the
+ * {@link KeybindsDrawer}, {@link ClassPicker}, {@link SizeSlider}, {@link GithubLink}, {@link LanguageSelector}); this wires them onto the
  * {@link Sheet} and keeps the panel's transient state — whether the keybinds drawer is open, and which
  * character the class picker is open for.
  *
@@ -93,10 +94,16 @@ public final class SwingOverlay implements OverlayView {
     private ClassPicker classPicker;
     private SizeSlider sizeSlider;
     private GithubLink githubLink;
+    private LanguageSelector languageSelector;
 
     private JPanel sheet;
     private JPanel keybinds;
     private JComponent classPickerComp;
+    private JComponent languageButton;
+    private JComponent languageMenu;
+
+    /** Whether the language menu hangs under its button. The panel's, like the drawer: a menu the view opens. */
+    private boolean languagesOpen;
 
     /**
      * The character the class picker is open for, or {@code null} when it is closed. The picker is a
@@ -150,6 +157,8 @@ public final class SwingOverlay implements OverlayView {
     public void hide() {
         visible = false;
         SwingUtilities.invokeLater(() -> {
+            // A menu is a glance, not a state: the panel comes back with it shut.
+            languagesOpen = false;
             if (window != null) {
                 window.setVisible(false);
             }
@@ -213,6 +222,8 @@ public final class SwingOverlay implements OverlayView {
         keybinds = keybindsDrawer.build(scale, content);
         keybinds.setVisible(keybindsOpen);
         classPickerComp = classPickerFor == null ? null : classPicker.build(scale, classPickerFor, content);
+        languageMenu = !languagesOpen ? null : languageSelector.menu(scale, content.language(), languageButton,
+                this::chooseLanguage, this::closeLanguages);
         window.setContentPane(new Sheet());
 
         team.fill(content);
@@ -230,7 +241,8 @@ public final class SwingOverlay implements OverlayView {
         translucentIfSupported();
 
         final var classIcons = new ClassIcons();
-        header = new HeaderBar(actions);
+        header = new HeaderBar();
+        languageSelector = new LanguageSelector();
         team = new TeamCard(actions, classIcons, this::openClassPicker);
         console = new ConsoleCard(actions);
         keybindsDrawer = new KeybindsDrawer(actions, this::redraw, this::closeKeybinds);
@@ -260,7 +272,9 @@ public final class SwingOverlay implements OverlayView {
         final var card = Card.sheet(scale, Theme.BACKGROUND).pinnedTo(sheetWidth());
         card.setBorder(new EmptyBorder(padding, padding, padding, padding));
 
-        card.add(header.build(scale, content, CloseCross.button(scale, this::hide, px(CLOSE_SIZE))));
+        languageButton = languageSelector.button(scale, content.language(), languagesOpen, this::toggleLanguages);
+        card.add(header.build(scale, content, languageButton,
+                CloseCross.button(scale, this::hide, px(CLOSE_SIZE))));
         card.add(Box.createVerticalStrut(px(Metrics.PADDING)));
         card.add(body(content));
         card.add(Box.createVerticalStrut(px(Metrics.PADDING)));
@@ -314,6 +328,24 @@ public final class SwingOverlay implements OverlayView {
         redraw();
     }
 
+    // ------------------------------------------------------------------ the language menu's open state
+
+    private void toggleLanguages() {
+        languagesOpen = !languagesOpen;
+        redraw();
+    }
+
+    private void closeLanguages() {
+        languagesOpen = false;
+        redraw();
+    }
+
+    /** Closed first, so the redraw the new language triggers finds the menu already shut. */
+    private void chooseLanguage(Language language) {
+        languagesOpen = false;
+        actions.changeLanguage(language);
+    }
+
     // ------------------------------------------------------------------ the class picker's open state
 
     /** Opens the class picker for a character — the picker's open/closed state is the panel's, not disk's. */
@@ -362,7 +394,10 @@ public final class SwingOverlay implements OverlayView {
             setOpaque(false);
             // Swing paints index 0 last, so the first added sits on top. The picker, while open, must
             // cover everything and be the only thing to click — so it goes in first, ahead of the sheet
-            // and the drawer beside it.
+            // and the drawer beside it. The language menu, while open, likewise catches every click.
+            if (languageMenu != null) {
+                add(languageMenu);
+            }
             if (classPickerComp != null) {
                 add(classPickerComp);
             }
@@ -390,6 +425,13 @@ public final class SwingOverlay implements OverlayView {
             // The picker covers the whole sheet: it dims what is behind it and catches every click.
             if (classPickerComp != null) {
                 classPickerComp.setBounds(0, 0, getWidth(), getHeight());
+            }
+
+            // The menu hangs from its button, so the sheet is laid out now rather than after this: Swing
+            // lays the children out in the order they were added, and the menu was added ahead of it.
+            if (languageMenu != null) {
+                sheet.validate();
+                languageMenu.setBounds(0, 0, getWidth(), getHeight());
             }
         }
 
