@@ -50,6 +50,8 @@ Et automatiquement :
   fenêtre. Celle d'un autre joueur ne l'est jamais.
 - **Auto-accept trades** (activé par défaut) : un échange proposé par un de vos propres personnages est
   accepté tout seul, sans changer de fenêtre. Celui d'un autre joueur ne l'est jamais.
+- **L'écran de fin de combat se ferme tout seul** partout, sauf chez le premier personnage de votre ordre
+  (ou, s'il est réduit, sur la fenêtre à l'écran).
 - **Auto-pass turns** (désactivé par défaut) : passe le tour de **tous** vos personnages. Une pastille
   orange reste affichée tant que c'est actif ; son bouton « Turn off » coupe la fonction.
   **Prérequis :** Minobot repère le début de chaque tour grâce à l'illustration que le jeu affiche, il faut
