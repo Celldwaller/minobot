@@ -15,7 +15,7 @@ import fr.minobot.core.vision.TurnBanner;
 import fr.minobot.feature.econome.SpellMarks;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.AutoPassBanner;
-import fr.minobot.feature.notification.ExchangeAccepter;
+import fr.minobot.feature.notification.RequestAccepter;
 import fr.minobot.feature.notification.RequestFocuser;
 import fr.minobot.feature.notification.ResultsCloser;
 import fr.minobot.feature.notification.TurnFocuser;
@@ -169,7 +169,8 @@ public final class MinobotApp {
 
         // Answers a trade between two of the player's own characters in place. Built before the
         // request auto-focus so it can consult it and stand aside for the trades it takes.
-        final var exchangeAccepter = new ExchangeAccepter(api, windowManager, requests, settings, activityLog);
+        final var requestAccepter = new RequestAccepter(api, windowManager, requests, settings,
+                groupManager::isRunning, activityLog);
 
         // Shows a whisper as a quiet toast at the left of the game rather than pulling the screen to it,
         // and writes it to the whisper log so the panel can still list it once the card has faded.
@@ -177,7 +178,7 @@ public final class MinobotApp {
                 notificationManager, whisperLog, SwingToastStack::new);
 
         // Takes the player to the character something is asked of, unless it is answered in place.
-        new RequestFocuser(windowManager, focusManager, requests, activityLog, exchangeAccepter::claims);
+        new RequestFocuser(windowManager, focusManager, requests, activityLog, requestAccepter::claims);
 
         // Takes the player to the character whose turn it is, read off the banner on the screen.
         new TurnFocuser(windowManager, focusManager, fightTurns, activityLog);

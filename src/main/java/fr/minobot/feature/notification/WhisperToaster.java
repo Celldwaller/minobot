@@ -39,7 +39,7 @@ import java.util.regex.Pattern;
  * lifetimes are the reason the log is not a field of this class: a card is a thing on screen, a whisper is
  * a thing that happened.
  *
- * <p>It is the mirror of {@link ExchangeAccepter} and {@link TurnPasser}: a feature that registers with
+ * <p>It is the mirror of {@link RequestAccepter} and {@link TurnPasser}: a feature that registers with
  * {@link NotificationManager}, speaks of <strong>characters</strong> ({@link GameWindow#name()}), and
  * keeps the Windows detail — the French wording the message is matched by — in one named constant. Its
  * one novelty is a UI surface, cut on the overlay's interface/impl seam ({@link ToastView} and

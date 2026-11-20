@@ -45,9 +45,11 @@ Et automatiquement :
 - **Chaque fenêtre ouverte depuis le launcher passe en plein écran** (agrandie) dès son apparition, une
   seule fois : si vous la remettez ensuite en petite fenêtre, Minobot n'y touche plus.
 - **Le bon personnage revient à l'écran** quand c'est son tour en combat, ou quand on lui propose un
-  groupe, un échange ou un défi.
+  groupe, un échange ou un défi — sauf si c'est un de vos propres personnages qui le propose (voir ci-dessous).
+- **Les invitations de groupe** entre vos propres personnages sont acceptées toutes seules, sans changer de
+  fenêtre. Celle d'un autre joueur ne l'est jamais.
 - **Auto-accept trades** (activé par défaut) : un échange proposé par un de vos propres personnages est
-  accepté tout seul. Celui d'un autre joueur ne l'est jamais.
+  accepté tout seul, sans changer de fenêtre. Celui d'un autre joueur ne l'est jamais.
 - **Auto-pass turns** (désactivé par défaut) : passe le tour de **tous** vos personnages. Une pastille
   orange reste affichée tant que c'est actif ; son bouton « Turn off » coupe la fonction.
   **Prérequis :** Minobot repère le début de chaque tour grâce à l'illustration que le jeu affiche, il faut

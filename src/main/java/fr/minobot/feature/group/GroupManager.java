@@ -75,6 +75,11 @@ public final class GroupManager {
         requests.onRequest(this::onRequest);
     }
 
+    /** Whether the relay is running — and so accepting its own invitations. */
+    public boolean isRunning() {
+        return running.get();
+    }
+
     /** Invites every character into the first one's group, then hands the focus back to it. */
     public void inviteAll() {
         if (!running.compareAndSet(false, true)) {

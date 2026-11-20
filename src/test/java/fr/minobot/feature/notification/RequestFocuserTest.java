@@ -71,7 +71,7 @@ class RequestFocuserTest {
     void standsAsideForARequestAnsweredInPlace() {
         final var api = desktop();
         final var features = new Features(api, Map.of("auto_accept_trade", true));
-        final var focuser = features.requestFocuser(features.exchangeAccepter());
+        final var focuser = features.requestFocuser(features.requestAccepter());
 
         focuser.onRequest(features.window("Bravo"), new Request(Request.Kind.TRADE, "Alpha"));
 

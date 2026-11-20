@@ -13,7 +13,7 @@ import fr.minobot.core.WhisperLog;
 import fr.minobot.core.WindowManager;
 import fr.minobot.core.input.FakeInput;
 import fr.minobot.feature.group.GroupManager;
-import fr.minobot.feature.notification.ExchangeAccepter;
+import fr.minobot.feature.notification.RequestAccepter;
 import fr.minobot.feature.notification.RequestFocuser;
 import fr.minobot.feature.notification.ResultsCloser;
 import fr.minobot.feature.notification.TurnFocuser;
@@ -29,6 +29,7 @@ import fr.minobot.win32.FakeWindowApi;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 import fr.minobot.core.domain.GameWindow;
 
@@ -146,8 +147,13 @@ public final class Features {
         return new TurnFocuser(windows, focus, turns, activity);
     }
 
-    public ExchangeAccepter exchangeAccepter() {
-        return new ExchangeAccepter(api, windows, requests, settings, activity);
+    public RequestAccepter requestAccepter() {
+        return requestAccepter(() -> false);
+    }
+
+    /** @param relaying whether the invitation relay is to be taken for running */
+    public RequestAccepter requestAccepter(BooleanSupplier relaying) {
+        return new RequestAccepter(api, windows, requests, settings, relaying, activity);
     }
 
     /** Where the screen reports every request, and every request feature listens. */
@@ -156,7 +162,7 @@ public final class Features {
     }
 
     /** The request auto-focus, standing aside for the trades the given accepter answers in place. */
-    public RequestFocuser requestFocuser(ExchangeAccepter accepter) {
+    public RequestFocuser requestFocuser(RequestAccepter accepter) {
         return new RequestFocuser(windows, focus, requests, activity, accepter::claims);
     }
 

@@ -16,14 +16,14 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Which trades accept themselves, which are left to the player — and how the request auto-focus is kept
+ * Which trades and invitations accept themselves, which are left to the player — and how the request auto-focus is kept
  * from fighting the accept.
  *
  * <p>The stranger's trade still brings its receiver up through the real {@link fr.minobot.core.FocusManager},
  * which sleeps through its ALT dance, so the timeout is generous, like the invitation relay's tests.
  */
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
-class ExchangeAccepterTest {
+class RequestAccepterTest {
 
     private FakeWindowApi desktop() {
         return new FakeWindowApi()
@@ -34,6 +34,10 @@ class ExchangeAccepterTest {
 
     private static Request tradeFrom(String asker) {
         return new Request(Request.Kind.TRADE, asker);
+    }
+
+    private static Request inviteFrom(String asker) {
+        return new Request(Request.Kind.GROUP_INVITE, asker);
     }
 
     private static final Map<String, Object> ON = Map.of("auto_accept_trade", true);
@@ -52,7 +56,7 @@ class ExchangeAccepterTest {
         final var api = desktop().withForeground(1); // the player opened the trade from Alpha
         final var features = new Features(api, ON);
 
-        features.exchangeAccepter().onRequest(features.window("Bravo"), tradeFrom("Alpha"));
+        features.requestAccepter().onRequest(features.window("Bravo"), tradeFrom("Alpha"));
 
         assertThat(accepted(api)).as("Bravo accepts with ENTER").containsExactly(2L);
         assertThat(api.postedMessages().getFirst())
@@ -68,7 +72,7 @@ class ExchangeAccepterTest {
     void leavesAStrangersTradeToTheAutoFocus() {
         final var api = desktop();
         final var features = new Features(api, ON);
-        features.requestFocuser(features.exchangeAccepter());
+        features.requestFocuser(features.requestAccepter());
 
         // Zoro is not one of our windows: a real trade offer from another player online.
         features.requests().report(features.window("Bravo"), tradeFrom("Zoro"));
@@ -82,7 +86,7 @@ class ExchangeAccepterTest {
     void theAutoFocusStandsAsideForAnInternalTrade() {
         final var api = desktop().withForeground(1);
         final var features = new Features(api, ON);
-        features.requestFocuser(features.exchangeAccepter());
+        features.requestFocuser(features.requestAccepter());
 
         features.requests().report(features.window("Bravo"), tradeFrom("Alpha"));
 
@@ -96,7 +100,7 @@ class ExchangeAccepterTest {
     void acceptsATradeSeenTwiceOnce() {
         final var api = desktop();
         final var features = new Features(api, ON);
-        features.exchangeAccepter();
+        features.requestAccepter();
 
         features.requests().report(features.window("Bravo"), tradeFrom("Alpha"));
         features.requests().report(features.window("Bravo"), tradeFrom("Alpha"));
@@ -108,13 +112,13 @@ class ExchangeAccepterTest {
     @DisplayName("claims() tells the auto-focus which requests to leave alone")
     void claimsOnlyInternalTrades() {
         final var features = new Features(desktop(), ON);
-        final var accepter = features.exchangeAccepter();
+        final var accepter = features.requestAccepter();
         final var bravo = features.window("Bravo");
 
         assertThat(accepter.claims(bravo, tradeFrom("Alpha"))).as("Alpha is ours: answered in place").isTrue();
         assertThat(accepter.claims(bravo, tradeFrom("Zoro"))).as("Zoro is a stranger: kept by the auto-focus").isFalse();
-        assertThat(accepter.claims(bravo, new Request(Request.Kind.GROUP_INVITE, "Alpha")))
-                .as("not a trade at all").isFalse();
+        assertThat(accepter.claims(bravo, new Request(Request.Kind.DUEL, "Alpha")))
+                .as("a duel is the player's to take up").isFalse();
         assertThat(accepter.claims(bravo, tradeFrom("Bravo"))).as("nobody trades with themselves").isFalse();
     }
 
@@ -122,7 +126,7 @@ class ExchangeAccepterTest {
     @DisplayName("a stranger whose name merely contains one of ours is not treated as internal")
     void matchesTheAskerByTheWholeName() {
         final var features = new Features(desktop(), ON);
-        final var accepter = features.exchangeAccepter();
+        final var accepter = features.requestAccepter();
 
         assertThat(accepter.claims(features.window("Bravo"), tradeFrom("SuperAlpha")))
                 .as("SuperAlpha is not our Alpha")
@@ -133,11 +137,38 @@ class ExchangeAccepterTest {
     }
 
     @Test
-    @DisplayName("turned off, it claims nothing and does nothing")
+    @DisplayName("an invitation from one of ours is accepted in the background, a stranger's left alone")
+    void acceptsAnInternalInvitation() {
+        final var api = desktop();
+        final var features = new Features(api, Map.of());
+        final var accepter = features.requestAccepter();
+
+        accepter.onRequest(features.window("Bravo"), inviteFrom("Zoro"));
+        accepter.onRequest(features.window("Bravo"), inviteFrom("Alpha"));
+
+        assertThat(accepted(api)).as("the switch is the trades' alone").containsExactly(2L);
+        assertThat(api.focusedWindows()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("while the relay runs, its invitations are its own to accept")
+    void leavesTheRelaysInvitations() {
+        final var api = desktop();
+        final var features = new Features(api, ON);
+        final var accepter = features.requestAccepter(() -> true);
+
+        accepter.onRequest(features.window("Bravo"), inviteFrom("Alpha"));
+
+        assertThat(accepter.claims(features.window("Bravo"), inviteFrom("Alpha"))).isFalse();
+        assertThat(api.postedMessages()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("turned off, it claims no trade and accepts none")
     void doesNothingWhenOff() {
         final var api = desktop();
         final var features = new Features(api, Map.of("auto_accept_trade", false));
-        final var accepter = features.exchangeAccepter();
+        final var accepter = features.requestAccepter();
 
         accepter.onRequest(features.window("Bravo"), tradeFrom("Alpha"));
 
