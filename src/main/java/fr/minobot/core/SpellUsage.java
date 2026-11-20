@@ -81,7 +81,7 @@ public final class SpellUsage {
             unsettled = null;
         }
         if (repeated) {
-            log.info("{} cast '{}' again this fight.", settled.fighter(), settled.action());
+            log.debug("{} cast '{}' again this fight.", settled.fighter(), settled.action());
             repeatListeners.forEach(listener -> listener.accept(settled));
         }
     }

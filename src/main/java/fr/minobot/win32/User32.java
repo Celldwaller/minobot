@@ -109,6 +109,14 @@ public final class User32 implements WindowApi {
     private static final MethodHandle PostMessageW = downcall("PostMessageW",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+    /** A sent message waits on the game's thread: a hung window must not hang the caller with it. */
+    private static final int SMTO_ABORTIFHUNG = 0x0002;
+    private static final int SEND_TIMEOUT_MILLIS = 500;
+
+    private static final MethodHandle SendMessageTimeoutW = downcall("SendMessageTimeoutW",
+            FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                    ValueLayout.ADDRESS));
     private static final MethodHandle ScreenToClient = downcall("ScreenToClient",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
     private static final MethodHandle ClientToScreen = downcall("ClientToScreen",
@@ -385,6 +393,16 @@ public final class User32 implements WindowApi {
             return (int) PostMessageW.invokeExact(hwnd, message, wparam, lparam) != 0;
         } catch (Throwable t) {
             throw failure("PostMessageW", t);
+        }
+    }
+
+    @Override
+    public boolean sendMessage(long hwnd, int message, long wparam, long lparam) {
+        try {
+            return (long) SendMessageTimeoutW.invokeExact(hwnd, message, wparam, lparam,
+                    SMTO_ABORTIFHUNG, SEND_TIMEOUT_MILLIS, MemorySegment.NULL) != 0;
+        } catch (Throwable t) {
+            throw failure("SendMessageTimeoutW", t);
         }
     }
 

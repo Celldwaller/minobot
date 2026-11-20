@@ -34,6 +34,13 @@ class Win32Test {
     }
 
     @Test
+    @DisplayName("a key's press carries its scan code once, its release the two state bits")
+    void packsAKey() {
+        assertThat(Win32.keyLParam(0x01, false)).isEqualTo(0x00010001L);
+        assertThat(Win32.keyLParam(0x01, true)).isEqualTo(0xC0010001L);
+    }
+
+    @Test
     void packsTheOrigin() {
         assertThat(Win32.makeLParam(0, 0)).isZero();
     }

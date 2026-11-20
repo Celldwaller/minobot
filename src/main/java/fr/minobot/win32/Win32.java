@@ -14,6 +14,17 @@ public final class Win32 {
     public static final int SW_SHOW = 5;
     public static final int SW_RESTORE = 9;
 
+    // Window messages
+    public static final int WM_ACTIVATE = 0x0006;
+
+    // wParam of WM_ACTIVATE
+    public static final int WA_INACTIVE = 0;
+    public static final int WA_ACTIVE = 1;
+
+    // Keyboard messages
+    public static final int WM_KEYDOWN = 0x0100;
+    public static final int WM_KEYUP = 0x0101;
+
     // Mouse messages
     public static final int WM_LBUTTONDOWN = 0x0201;
     public static final int WM_LBUTTONUP = 0x0202;
@@ -75,6 +86,7 @@ public final class Win32 {
     public static final int VK_SHIFT = 0x10;
     public static final int VK_CONTROL = 0x11;
     public static final int VK_MENU = 0x12;
+    public static final int VK_ESCAPE = 0x1B;
     public static final int VK_SPACE = 0x20;
 
     /** {@code 0} through {@code 9}. */
@@ -107,6 +119,16 @@ public final class Win32 {
      */
     public static long makeLParam(int x, int y) {
         return ((long) (y & 0xFFFF) << 16) | (x & 0xFFFF);
+    }
+
+    /**
+     * Packs the {@code lParam} of a keyboard message: a repeat count of one, the key's scan code, and —
+     * for a release — the previous-state and transition bits, without which the message claims a key
+     * pressed and never let go.
+     */
+    public static long keyLParam(int scanCode, boolean release) {
+        final var press = 1L | (long) (scanCode & 0xFF) << 16;
+        return release ? press | 1L << 30 | 1L << 31 : press;
     }
 
     private Win32() {

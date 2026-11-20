@@ -3,6 +3,7 @@ package fr.minobot.feature;
 import fr.minobot.app.Settings;
 import fr.minobot.app.TestConfigs;
 import fr.minobot.core.ActivityLog;
+import fr.minobot.core.FightLog;
 import fr.minobot.core.FightTurns;
 import fr.minobot.core.FlashSuppressor;
 import fr.minobot.core.FocusManager;
@@ -14,6 +15,7 @@ import fr.minobot.core.input.FakeInput;
 import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.ExchangeAccepter;
 import fr.minobot.feature.notification.RequestFocuser;
+import fr.minobot.feature.notification.ResultsCloser;
 import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
 import fr.minobot.feature.notification.WhisperToaster;
@@ -134,6 +136,10 @@ public final class Features {
 
     public TurnPasser turnPasser() {
         return new TurnPasser(windows, input, focus, turns, settings, activity);
+    }
+
+    public ResultsCloser resultsCloser() {
+        return new ResultsCloser(api, windows, new FightLog(), activity);
     }
 
     public TurnFocuser turnFocuser() {

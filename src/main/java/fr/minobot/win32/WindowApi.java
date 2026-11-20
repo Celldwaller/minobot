@@ -67,6 +67,12 @@ public interface WindowApi {
      */
     boolean postMessage(long hwnd, int message, long wparam, long lparam);
 
+    /**
+     * Sends a message to the window and waits for it to be handled — {@code false} when it was not within
+     * half a second, the window hung, or the handle is stale.
+     */
+    boolean sendMessage(long hwnd, int message, long wparam, long lparam);
+
     /** Converts screen coordinates into the window's client coordinates, empty if the handle is stale. */
     Optional<Point> screenToClient(long hwnd, Point screen);
 

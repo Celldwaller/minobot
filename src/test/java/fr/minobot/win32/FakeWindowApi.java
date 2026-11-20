@@ -236,16 +236,23 @@ public final class FakeWindowApi implements WindowApi {
         if (refuseNextPost.remove(hwnd)) {
             return false;
         }
-        posted.add(new PostedMessage(hwnd, message, wparam, lparam));
+        posted.add(new PostedMessage(hwnd, message, wparam, lparam, false));
         return isWindow(hwnd);
     }
 
-    /** Every message posted so far — the multi-clicker's whole output. */
+    @Override
+    public boolean sendMessage(long hwnd, int message, long wparam, long lparam) {
+        posted.add(new PostedMessage(hwnd, message, wparam, lparam, true));
+        return isWindow(hwnd);
+    }
+
+    /** Every message posted or sent so far, in order — the multi-clicker's whole output. */
     public List<PostedMessage> postedMessages() {
         return List.copyOf(posted);
     }
 
-    public record PostedMessage(long hwnd, int message, long wparam, long lparam) {
+    /** @param sent whether it was sent, waited for, rather than posted */
+    public record PostedMessage(long hwnd, int message, long wparam, long lparam, boolean sent) {
     }
 
     /** The client area is modelled as the screen shifted by (hwnd * 10), so the maths is checkable. */

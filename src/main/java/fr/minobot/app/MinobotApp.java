@@ -17,6 +17,7 @@ import fr.minobot.feature.group.GroupManager;
 import fr.minobot.feature.notification.AutoPassBanner;
 import fr.minobot.feature.notification.ExchangeAccepter;
 import fr.minobot.feature.notification.RequestFocuser;
+import fr.minobot.feature.notification.ResultsCloser;
 import fr.minobot.feature.notification.TurnFocuser;
 import fr.minobot.feature.notification.TurnPasser;
 import fr.minobot.feature.notification.WhisperToaster;
@@ -185,6 +186,9 @@ public final class MinobotApp {
         // Ends each character's turn while the Auto-pass switch is on, reading it at every turn. The
         // switch is flipped by the overlay or by the AUTO_PASS_TURN hotkey (bound below like any other).
         new TurnPasser(windowManager, inputSimulator, focusManager, fightTurns, settings, activityLog);
+
+        // Closes the end-of-fight screen in every window but the one the player reads it in.
+        new ResultsCloser(api, windowManager, fightLog, activityLog);
 
         // The visible half of the same switch: a standing banner over the game while auto-pass is on. It
         // answers no toast — it watches the switch through Settings.onChange and follows the game window.

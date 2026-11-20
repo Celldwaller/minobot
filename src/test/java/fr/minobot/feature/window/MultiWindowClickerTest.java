@@ -41,8 +41,8 @@ class MultiWindowClickerTest {
     private static List<PostedMessage> leftClickOn(long hwnd, int x, int y) {
         final var lparam = Win32.makeLParam(x, y);
         return List.of(
-                new PostedMessage(hwnd, Win32.WM_LBUTTONDOWN, Win32.MK_LBUTTON, lparam),
-                new PostedMessage(hwnd, Win32.WM_LBUTTONUP, 0, lparam));
+                new PostedMessage(hwnd, Win32.WM_LBUTTONDOWN, Win32.MK_LBUTTON, lparam, false),
+                new PostedMessage(hwnd, Win32.WM_LBUTTONUP, 0, lparam, false));
     }
 
     /**
