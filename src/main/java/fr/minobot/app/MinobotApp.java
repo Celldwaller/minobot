@@ -143,7 +143,7 @@ public final class MinobotApp {
         this.screenWatcher = ocr.map(reader -> new ScreenWatcher(api, windowManager,
                 List.of(ScreenReader.turns(new TurnBanner(new RememberingTextReader(reader)), fightTurns)),
                 List.of(ScreenReader.requests(new RequestDialog(new RememberingTextReader(reader)), requests),
-                        ScreenReader.resultsScreen(resultsCloser::sweeping, resultsCloser::seen)),
+                        ScreenReader.resultsScreen(resultsCloser::watching, resultsCloser::seen, resultsCloser::gone)),
                 List.of(new ScreenWatcher.Pinned(characters -> characters.stream().findFirst(),
                                 ScreenReader.fightLog(new ChatLog(reader), fightLog, fightTurns::inFight)),
                         new ScreenWatcher.Pinned(characters -> characters.stream()

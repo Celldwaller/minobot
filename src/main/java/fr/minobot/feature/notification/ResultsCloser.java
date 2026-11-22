@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -26,6 +26,12 @@ import java.util.function.LongSupplier;
  * ({@link #seen}), which presses {@code ESCAPE} in that window, in the background ({@link BackgroundKeys}):
  * no window takes the screen. Only where the screen is up: a character who was not in the fight has none,
  * and {@code ESCAPE} opens its game menu.
+ *
+ * <p>A window is pressed in once, and not again until the watcher has seen its screen closed: the chat's
+ * {@code Combat terminé} can be read twice — an OCR that reads one line of it otherwise makes the whole
+ * chat new — and a window that draws nothing new keeps showing its screen in the frames, closed or not. A
+ * second press in either case opens the menu. A fight's end read while the screens are still looked for is
+ * the same fight's.
  *
  * <p>The screen is left open in the window the player reads it in — the main character's, the first of
  * their order, unless it is minimized; then the one on screen. A minimized window shows nothing to look
@@ -52,11 +58,16 @@ public final class ResultsCloser {
     private volatile Sweep sweep;
 
     /**
-     * @param kept    the window whose screen is left open
-     * @param until   when the screens stop being looked for, on the {@link #nanos} clock
-     * @param pressed the windows pressed in already: once the screen is closed, {@code ESCAPE} opens the menu
+     * The windows pressed in whose screen has not been seen closed since — whatever the fight — and
+     * whether the press is still under way: a screen still up then is one the key has not reached yet.
      */
-    private record Sweep(long kept, long until, Set<Long> pressed) {
+    private final Map<Long, Boolean> pressed = new ConcurrentHashMap<>();
+
+    /**
+     * @param kept  the window whose screen is left open
+     * @param until when the screens stop being looked for, on the {@link #nanos} clock
+     */
+    private record Sweep(long kept, long until) {
     }
 
     public ResultsCloser(WindowApi api, WindowManager windows, FightLog fightLog, ActivityLog activity) {
@@ -80,18 +91,32 @@ public final class ResultsCloser {
     }
 
     void fightEnded() {
+        if (sweeping()) {
+            log.debug("The fight's end read again while its screens are looked for: the same fight.");
+            return;
+        }
         final var foreground = api.foregroundWindow();
         final var kept = windows.orderedWindows().stream().findFirst()
                 .filter(main -> !api.isIconic(main.hwnd()))
                 .map(GameWindow::hwnd)
                 .orElse(foreground);
-        sweep = new Sweep(kept, nanos.getAsLong() + WAIT.toNanos(), ConcurrentHashMap.newKeySet());
+        sweep = new Sweep(kept, nanos.getAsLong() + WAIT.toNanos());
     }
 
-    /** Whether the screens are being looked for — what spares the watcher looking at every look. */
+    /** Whether the screens are being looked for to be closed. */
     public boolean sweeping() {
         final var current = sweep;
         return current != null && nanos.getAsLong() < current.until();
+    }
+
+    /**
+     * Whether the watcher is to look for the screens — to close them, or to see closed one pressed in:
+     * what spares it looking at every look.
+     */
+    public boolean watching() {
+        // A window closed after its press is never seen again, nor its screen closed.
+        pressed.keySet().removeIf(hwnd -> !api.isWindow(hwnd));
+        return sweeping() || !pressed.isEmpty();
     }
 
     /**
@@ -100,17 +125,25 @@ public final class ResultsCloser {
      */
     public void seen(GameWindow window) {
         final var current = sweep;
-        if (!sweeping() || window.hwnd() == current.kept() || !current.pressed().add(window.hwnd())) {
+        if (!sweeping() || window.hwnd() == current.kept() || pressed.putIfAbsent(window.hwnd(), true) != null) {
             return;
         }
         dispatcher.execute(() -> close(window));
     }
 
+    /** No end-of-fight screen in a character's window — told by the screen watcher while it {@link #watching}. */
+    public void gone(GameWindow window) {
+        pressed.remove(window.hwnd(), false);
+    }
+
     private void close(GameWindow window) {
         if (!keys.press(window.hwnd(), Win32.VK_ESCAPE, Win32.SCAN_ESCAPE)) {
+            // Nothing reached the window: the next sighting tries again.
+            pressed.remove(window.hwnd());
             log.warn("Could not press ESCAPE in '{}': its end-of-fight screen was left open.", window.name());
             return;
         }
+        pressed.put(window.hwnd(), false);
         log.info("Closed '{}'s end-of-fight screen.", window.name());
         activity.record(Text.of("activity.results_closed", window.name()));
     }

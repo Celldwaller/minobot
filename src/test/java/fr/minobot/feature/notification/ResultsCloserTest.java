@@ -8,6 +8,8 @@ import fr.minobot.win32.Win32;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -56,6 +58,13 @@ class ResultsCloserTest {
     private static void seenIn(Features features, ResultsCloser closer, String... names) {
         for (final var name : names) {
             closer.seen(features.window(name));
+        }
+    }
+
+    /** The screen closed in these windows, as the screen watcher would tell it. */
+    private static void goneIn(Features features, ResultsCloser closer, String... names) {
+        for (final var name : names) {
+            closer.gone(features.window(name));
         }
     }
 
@@ -160,10 +169,92 @@ class ResultsCloserTest {
 
         fightEnds();
         seenIn(features, closer, "Alpha");
+        goneIn(features, closer, "Alpha");
         now.addAndGet(ResultsCloser.WAIT.toNanos());
         fightEnds();
         seenIn(features, closer, "Alpha");
 
         assertThat(escaped(api)).containsExactly(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("the fight's end read twice is one fight: the windows pressed in are not pressed again")
+    void readsTheEndOnce() {
+        final var api = desktop();
+        final var features = team(api);
+        final var closer = features.resultsCloser(fightLog, now::get);
+
+        fightEnds();
+        seenIn(features, closer, "Alpha");
+        // One line read otherwise: the whole chat is new to the fight log, its end with it.
+        now.addAndGet(Duration.ofSeconds(1).toNanos());
+        fightLog.report(List.of("Alpha lance Fléche Magique.", "Combat terminé (ouvrir l'écran de"));
+        seenIn(features, closer, "Alpha", "Charlie");
+
+        assertThat(escaped(api)).containsExactly(1L, 3L);
+    }
+
+    @Test
+    @DisplayName("the fight's end read again later does not press a window whose frame still shows its screen")
+    void waitsForTheScreenSeenClosed() {
+        final var api = desktop();
+        final var features = team(api);
+        final var closer = features.resultsCloser(fightLog, now::get);
+
+        fightEnds();
+        seenIn(features, closer, "Alpha");
+        now.addAndGet(ResultsCloser.WAIT.toNanos());
+        assertThat(closer.watching()).isTrue();
+        fightEnds();
+        seenIn(features, closer, "Alpha");
+
+        assertThat(escaped(api)).containsExactly(1L);
+    }
+
+    @Test
+    @DisplayName("stops looking once every window pressed in is seen closed, or closed itself")
+    void watchesUntilTheScreensAreSeenClosed() {
+        final var api = desktop();
+        final var features = team(api);
+        final var closer = features.resultsCloser(fightLog, now::get);
+
+        fightEnds();
+        seenIn(features, closer, "Alpha", "Charlie");
+        now.addAndGet(ResultsCloser.WAIT.toNanos());
+        goneIn(features, closer, "Alpha");
+        assertThat(closer.watching()).isTrue();
+
+        api.close(3);
+        assertThat(closer.watching()).isFalse();
+    }
+
+    @Test
+    @DisplayName("a screen seen closed before the key has reached the game is not pressed again")
+    void ignoresTheScreenGoneMidPress() {
+        final var api = desktop();
+        final var features = team(api);
+        final var pending = new ArrayList<Runnable>();
+        final var closer = features.resultsCloser(fightLog, pending::add, now::get);
+
+        fightEnds();
+        seenIn(features, closer, "Alpha");
+        goneIn(features, closer, "Alpha");
+        seenIn(features, closer, "Alpha");
+        pending.forEach(Runnable::run);
+
+        assertThat(escaped(api)).containsExactly(1L);
+    }
+
+    @Test
+    @DisplayName("a press that reached nothing is tried again at the next sighting")
+    void retriesAFailedPress() {
+        final var api = desktop().refusingTheNextPostTo(1);
+        final var features = team(api);
+        final var closer = features.resultsCloser(fightLog, now::get);
+
+        fightEnds();
+        seenIn(features, closer, "Alpha", "Alpha");
+
+        assertThat(escaped(api)).containsExactly(1L);
     }
 }

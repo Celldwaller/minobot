@@ -48,13 +48,13 @@ public interface ScreenReader {
     }
 
     /**
-     * The end-of-fight screen up in a character's window — looked for only while it is wanted: out of a
-     * fight's end, it is two columns of every window copied out at every look for nothing.
+     * The end-of-fight screen up in a character's window, or not — looked for only while it is wanted: out
+     * of a fight's end, it is two columns of every window copied out at every look for nothing.
      */
-    static ScreenReader resultsScreen(BooleanSupplier wanted, Consumer<GameWindow> seen) {
+    static ScreenReader resultsScreen(BooleanSupplier wanted, Consumer<GameWindow> seen, Consumer<GameWindow> gone) {
         return (window, frame, _) -> {
-            if (wanted.getAsBoolean() && ResultsScreen.isUp(frame)) {
-                seen.accept(window);
+            if (wanted.getAsBoolean()) {
+                (ResultsScreen.isUp(frame) ? seen : gone).accept(window);
             }
         };
     }

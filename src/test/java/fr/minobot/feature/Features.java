@@ -29,6 +29,7 @@ import fr.minobot.win32.FakeWindowApi;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 
@@ -142,7 +143,11 @@ public final class Features {
 
     /** Pressing on the caller's thread, so a test reads what was pressed as soon as it is told. */
     public ResultsCloser resultsCloser(FightLog fightLog, LongSupplier nanos) {
-        return new ResultsCloser(api, windows, fightLog, activity, Runnable::run, nanos);
+        return resultsCloser(fightLog, Runnable::run, nanos);
+    }
+
+    public ResultsCloser resultsCloser(FightLog fightLog, Executor dispatcher, LongSupplier nanos) {
+        return new ResultsCloser(api, windows, fightLog, activity, dispatcher, nanos);
     }
 
     public TurnFocuser turnFocuser() {
